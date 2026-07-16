@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- CTA_IMPORTADOR_JSON_SELECTOR_REAL_V6_2026-07-16 -->
 <!-- CTA_TEMA_COLOR_HABITUAL_RESTAURADO_V5_2026-07-16 -->
 <!-- CTA_IMPORTAR_JSON_EN_WEB_PERSONAL_V4_2026-07-16 -->
 <!-- CTA_TEMA_ROSA_ELECTRICO_V3_2026-07-16 -->
@@ -63,8 +64,23 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
   font-size:12px;
   font-weight:900;
   cursor:pointer;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
 }
 .json-import-btn:active{transform:scale(.985)}
+.json-import-btn input[type=file]{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  opacity:0;
+  cursor:pointer;
+  font-size:0;
+}
 .json-import-status{
   display:none;
   margin-top:8px;
@@ -124,8 +140,10 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
   <div class="json-import">
    <div class="json-import-title">¿No aparecen tus datos de CTA?</div>
    <div class="json-import-desc">Carga aquí el backup completo <b>.json</b> exportado desde CTA. Se importará en el modo que tienes abierto.</div>
-   <button class="json-import-btn" type="button" onclick="id('ctaJsonFile').click()">📥 Importar JSON de CTA</button>
-   <input id="ctaJsonFile" type="file" accept=".json,application/json" hidden onchange="importCtaJson(this.files[0]);this.value=''">
+   <label class="json-import-btn" for="ctaJsonFile">
+    <span>📥 Importar JSON de CTA</span>
+    <input id="ctaJsonFile" type="file" accept=".json,application/json">
+   </label>
    <div class="json-import-status" id="jsonImportStatus"></div>
   </div>
 
@@ -282,6 +300,14 @@ window.addEventListener('message',function(ev){
  if(d.type==='personal-tool-error'){id('loading').style.display='none';showToast(d.message||'No se pudo abrir la herramienta')}
 });
 window.addEventListener('keydown',function(e){if(e.key==='Escape'&&id('viewer').classList.contains('show'))closeViewer()});
+
+document.addEventListener('change',function(ev){
+ var input=ev.target;
+ if(!input||input.id!=='ctaJsonFile')return;
+ var file=input.files&&input.files[0];
+ if(file)importCtaJson(file);
+ input.value='';
+});
 </script>
 </body>
 </html>
