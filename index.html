@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- CTA_TEMA_COLOR_HABITUAL_RESTAURADO_V5_2026-07-16 -->
+<!-- CTA_IMPORTAR_JSON_EN_WEB_PERSONAL_V4_2026-07-16 -->
+<!-- CTA_TEMA_ROSA_ELECTRICO_V3_2026-07-16 -->
 <!-- CTA_HERRAMIENTAS_TITULO_DESCRIPCION_SEPARADOS_V2_2026-07-16 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -31,6 +34,57 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
 .menu-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
 .mode-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;font-size:10px;font-weight:900;border:1px solid var(--line)}.mode-pill.shared{color:#bfdbfe;background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.28)}.mode-pill.private{color:#bbf7d0;background:rgba(74,222,128,.09);border-color:rgba(74,222,128,.25)}
 .change{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);border-radius:10px;padding:8px 10px;font-size:10px;font-weight:800;cursor:pointer}
+.json-import{
+  margin-bottom:14px;
+  padding:13px;
+  border-radius:14px;
+  border:1px solid rgba(200,168,75,.24);
+  background:linear-gradient(135deg,rgba(200,168,75,.085),rgba(255,255,255,.025));
+}
+.json-import-title{
+  font-size:13px;
+  font-weight:900;
+  color:var(--white);
+}
+.json-import-desc{
+  margin-top:4px;
+  font-size:10px;
+  line-height:1.45;
+  color:var(--muted);
+}
+.json-import-btn{
+  width:100%;
+  margin-top:10px;
+  padding:11px 12px;
+  border-radius:11px;
+  border:1px solid rgba(200,168,75,.42);
+  background:rgba(200,168,75,.14);
+  color:var(--gold);
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.json-import-btn:active{transform:scale(.985)}
+.json-import-status{
+  display:none;
+  margin-top:8px;
+  padding:8px 9px;
+  border-radius:9px;
+  font-size:10px;
+  line-height:1.4;
+}
+.json-import-status.show{display:block}
+.json-import-status.ok{
+  color:#bbf7d0;
+  border:1px solid rgba(74,222,128,.25);
+  background:rgba(74,222,128,.08);
+}
+.json-import-status.err{
+  color:#fecaca;
+  border:1px solid rgba(248,113,113,.3);
+  background:rgba(248,113,113,.08);
+}
+
 .tools{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tool{min-height:135px;border-radius:17px;border:1px solid var(--line);background:rgba(24,33,53,.94);color:var(--white);padding:15px;text-align:left;cursor:pointer;position:relative;overflow:hidden}
 .tool:active{transform:scale(.98)}.tool::after{content:"›";position:absolute;right:13px;bottom:8px;color:var(--gold);font-size:25px}
@@ -67,6 +121,14 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
 
  <section class="screen" id="toolsScreen">
   <div class="menu-head"><div class="mode-pill" id="modePill"></div><button class="change" onclick="changeMode()">Cambiar modo</button></div>
+  <div class="json-import">
+   <div class="json-import-title">¿No aparecen tus datos de CTA?</div>
+   <div class="json-import-desc">Carga aquí el backup completo <b>.json</b> exportado desde CTA. Se importará en el modo que tienes abierto.</div>
+   <button class="json-import-btn" type="button" onclick="id('ctaJsonFile').click()">📥 Importar JSON de CTA</button>
+   <input id="ctaJsonFile" type="file" accept=".json,application/json" hidden onchange="importCtaJson(this.files[0]);this.value=''">
+   <div class="json-import-status" id="jsonImportStatus"></div>
+  </div>
+
   <div class="tools">
    <button class="tool" onclick="openTool('errores','Errores de turno')"><span class="tool-icon">⚠️</span><span class="tool-name">Errores de turno</span><span class="tool-desc">Descansos, libranzas, partidos y jornadas máximas.</span></button>
    <button class="tool" onclick="openTool('perentorias','Perentorias y HFUN')"><span class="tool-icon">⏱️</span><span class="tool-name">Perentorias y HFUN</span><span class="tool-desc">Importaciones, años, meses, acumulados y detalle.</span></button>
@@ -103,6 +165,93 @@ function selectMode(m){
 }
 function changeMode(){
  closeViewer();mode=null;id('toolsScreen').classList.remove('active');id('modeScreen').classList.add('active');
+}
+
+function setJsonImportStatus(text,type){
+ var el=id('jsonImportStatus');
+ if(!el)return;
+ el.textContent=text;
+ el.className='json-import-status show '+(type==='err'?'err':'ok');
+}
+
+function isCtaBackupKey(key){
+ if(!key)return false;
+ if(key==='cta_session')return false;
+ if(key.indexOf('cta_historial_operativa_vuelos')===0)return false;
+ if(key.indexOf('cta_')===0)return true;
+ if(key.indexOf('op_')===0)return true;
+ if(key.indexOf('perentorias:')===0)return true;
+ if(key==='avisos_seen')return true;
+ return false;
+}
+
+function importCtaJson(file){
+ if(!file)return;
+ if(!mode){
+  setJsonImportStatus('Primero elige modo compartido o independiente.','err');
+  return;
+ }
+
+ setJsonImportStatus('Leyendo '+file.name+'…','ok');
+
+ var reader=new FileReader();
+ reader.onload=function(ev){
+  try{
+   var raw=String(ev.target.result||'');
+   if(raw.charCodeAt(0)===0xFEFF)raw=raw.slice(1);
+   var data=JSON.parse(raw);
+   var keys=Object.keys(data).filter(function(k){
+    return k.charAt(0)!=='_'&&isCtaBackupKey(k);
+   });
+
+   if(!keys.length){
+    setJsonImportStatus('El JSON no contiene datos reconocibles de CTA.','err');
+    return;
+   }
+
+   var prefix=mode==='private'?'herramientas_personales:independiente:':'';
+   var restored=0,failed=0;
+
+   keys.forEach(function(k){
+    try{
+     var value=data[k];
+     if(typeof value==='undefined'||value===null)return;
+     localStorage.setItem(
+      prefix+k,
+      typeof value==='string'?value:JSON.stringify(value)
+     );
+     restored++;
+    }catch(e){
+     failed++;
+    }
+   });
+
+   if(!restored){
+    setJsonImportStatus('No se pudo importar ninguna clave del backup.','err');
+    return;
+   }
+
+   try{
+    var frame=id('frame');
+    frame.removeAttribute('src');
+    frame.srcdoc='';
+   }catch(e){}
+
+   var modeName=mode==='shared'?'compartido':'independiente';
+   setJsonImportStatus(
+    '✅ '+restored+' claves importadas en modo '+modeName+
+    (failed?' · '+failed+' no se pudieron guardar':'')+
+    '. Ya puedes abrir las herramientas.',
+    'ok'
+   );
+  }catch(err){
+   setJsonImportStatus('No se pudo leer el JSON: '+err.message,'err');
+  }
+ };
+ reader.onerror=function(){
+  setJsonImportStatus('No se pudo abrir el archivo seleccionado.','err');
+ };
+ reader.readAsText(file,'UTF-8');
 }
 function setFrameHtml(html,onload){
  var f=id('frame');motorReady=false;f.name=mode;f.onload=onload||function(){id('loading').style.display='none'};f.srcdoc=html;
