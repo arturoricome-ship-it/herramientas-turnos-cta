@@ -1,4 +1,4 @@
-const CACHE_NAME = 'herramientas-turnos-v27';
+const CACHE_NAME = 'herramientas-turnos-v28';
 const APP_SHELL = [
   './',
   './index.html',
