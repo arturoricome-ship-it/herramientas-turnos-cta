@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+
+<!-- WEBAPP_PWA_STANDALONE_V26_2026-07-18 -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="application-name" content="Herramientas de turnos">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Herramientas">
+<meta name="theme-color" content="#0d1623">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+
 <!-- HERRAMIENTAS_ANALIZADOR_DETALLE_DIAS_V25_2026-07-18 -->
 <!-- HERRAMIENTAS_NOMINAS_COPIA_COMPLETA_V24_2026-07-18 -->
 <!-- HERRAMIENTAS_NOMINAS_GRUPO_INDEXEDDB_V23_2026-07-18 -->
@@ -417,5 +430,18 @@ window.addEventListener('message',function(ev){
 window.addEventListener('keydown',function(e){if(e.key==='Escape'&&id('viewer').classList.contains('show'))closeViewer()});
 
 </script>
+
+<script>
+(function(){
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('./sw.js').catch(function(err){
+        console.warn('No se pudo registrar la web app:',err);
+      });
+    });
+  }
+})();
+</script>
+
 </body>
 </html>
