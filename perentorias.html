@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- PERENTORIAS_PERSISTENCIA_INDEXEDDB_V68_2026-07-18 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registro de Perentorias</title>
@@ -557,7 +558,7 @@ body.modal-open{overflow:hidden;}
     </div>
   </div>
 
-  <p class="footer-note">Los datos se guardan de forma privada en el almacenamiento local de este navegador y persisten entre sesiones.<br>Las importaciones se acumulan automáticamente. «Exportar copia CSV» guarda los registros completos —fechas, empleados, tipos e historial— para poder cargarlos en otro dispositivo. «Exportar vista CSV» descarga únicamente la tabla filtrada que estás viendo.</p>
+  <p class="footer-note">Los datos se guardan automáticamente en IndexedDB y en una copia local de este navegador, y persisten entre sesiones.<br>Las importaciones se acumulan automáticamente. «Exportar copia CSV» guarda los registros completos —fechas, empleados, tipos e historial— para poder cargarlos en otro dispositivo. «Exportar vista CSV» descarga únicamente la tabla filtrada que estás viendo.</p>
 
 </div>
 
@@ -571,6 +572,14 @@ const CAT_LABELS = {
   'HFUN8':'HFUN'
 };
 const STORAGE_KEY = 'perentorias:imports';
+const LEGACY_STORAGE_KEYS = [
+  'herramientas_personales:solo_independiente:v2:perentorias:imports',
+  'herramientas_personales:solo_independiente:v2:cta_perentorias_imports',
+  'herramientas_personales:solo_independiente:v2:cta_perentorias_hfun'
+];
+const PERENTORIAS_DB_NAME = 'herramientas_perentorias_db_v1';
+const PERENTORIAS_DB_STORE = 'state';
+const PERENTORIAS_DB_KEY = 'imports';
 const REAL_MODE_KEY = 'perentorias:realMode';
 const REAL_MULTIPLIER = 1.75;
 
@@ -960,29 +969,121 @@ function grandTotals(){
   return g;
 }
 
-async function loadImports(){
+let perentoriasDbPromise = null;
+
+function openPerentoriasDb(){
+  if(perentoriasDbPromise) return perentoriasDbPromise;
+  perentoriasDbPromise = new Promise((resolve, reject) => {
+    if(!window.indexedDB){ reject(new Error('IndexedDB no disponible')); return; }
+    const req = indexedDB.open(PERENTORIAS_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if(!db.objectStoreNames.contains(PERENTORIAS_DB_STORE)){
+        db.createObjectStore(PERENTORIAS_DB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('No se pudo abrir IndexedDB'));
+  });
+  return perentoriasDbPromise;
+}
+
+async function readImportsFromDb(){
+  const db = await openPerentoriasDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PERENTORIAS_DB_STORE, 'readonly');
+    const req = tx.objectStore(PERENTORIAS_DB_STORE).get(PERENTORIAS_DB_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error || new Error('No se pudieron leer las Perentorias'));
+  });
+}
+
+async function writeImportsToDb(raw){
+  const db = await openPerentoriasDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PERENTORIAS_DB_STORE, 'readwrite');
+    tx.objectStore(PERENTORIAS_DB_STORE).put(raw, PERENTORIAS_DB_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('No se pudieron guardar las Perentorias'));
+    tx.onabort = () => reject(tx.error || new Error('Guardado cancelado'));
+  });
+}
+
+function parseStoredImports(raw){
+  if(!raw) return null;
   try{
-    if(window.storage && typeof window.storage.get === 'function'){
-      const res = await window.storage.get(STORAGE_KEY, false);
-      imports = res && res.value ? JSON.parse(res.value) : [];
-    }else{
-      imports = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    }
+    const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(value) ? value : null;
   }catch(e){
-    imports = [];
+    return null;
+  }
+}
+
+function readImportsFromLocalStorage(){
+  const keys = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS];
+  for(const key of keys){
+    try{
+      const parsed = parseStoredImports(localStorage.getItem(key));
+      if(parsed && parsed.length) return parsed;
+      if(parsed && key === STORAGE_KEY) return parsed;
+    }catch(e){}
+  }
+  return null;
+}
+
+async function loadImports(){
+  imports = [];
+  let loaded = null;
+
+  try{
+    loaded = parseStoredImports(await readImportsFromDb());
+  }catch(e){}
+
+  if(!loaded){
+    loaded = readImportsFromLocalStorage();
+  }
+
+  if(!loaded && window.storage && typeof window.storage.get === 'function'){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      loaded = parseStoredImports(res && res.value);
+    }catch(e){}
+  }
+
+  imports = loaded || [];
+
+  // Migra automáticamente cualquier copia antigua al almacenamiento robusto nuevo.
+  if(imports.length){
+    try{ await writeImportsToDb(JSON.stringify(imports)); }catch(e){}
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(imports)); }catch(e){}
   }
 }
 
 async function saveImports(){
+  const raw = JSON.stringify(imports);
+  let saved = false;
+  let lastError = null;
+
   try{
-    if(window.storage && typeof window.storage.set === 'function'){
-      await window.storage.set(STORAGE_KEY, JSON.stringify(imports), false);
-    }else{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(imports));
-    }
-  }catch(e){
-    showStatus('No se pudo guardar en el almacenamiento persistente. Los datos podrían perderse al recargar.', 'err');
+    await writeImportsToDb(raw);
+    saved = true;
+  }catch(e){ lastError = e; }
+
+  // Copia espejo para compatibilidad y recuperación sencilla.
+  try{
+    localStorage.setItem(STORAGE_KEY, raw);
+    saved = true;
+  }catch(e){ lastError = lastError || e; }
+
+  if(window.storage && typeof window.storage.set === 'function'){
+    try{ await window.storage.set(STORAGE_KEY, raw, false); }catch(e){}
   }
+
+  if(!saved){
+    showStatus('No se pudo guardar de forma persistente. Los datos podrían perderse al cerrar la web' + (lastError && lastError.message ? ': ' + lastError.message : '.'), 'err');
+    return false;
+  }
+  return true;
 }
 
 function showStatus(msg, kind){

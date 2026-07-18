@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- HERRAMIENTAS_PERENTORIAS_HTML_SEPARADO_PERSISTENTE_V68_2026-07-18 -->
 <!-- HERRAMIENTAS_PERENTORIAS_IMPORTA_CSV_CTA_V28_2026-07-18 -->
 <!-- HERRAMIENTAS_PERENTORIAS_CSV_CTA_Y_CACHE_V64_2026-07-18 -->
 <!-- WEBAPP_HORAS_PLANTILLA_SIN_BARRA_CTA_V27_2026-07-18 -->
@@ -314,7 +315,14 @@ function injectMotorTool(html,tool){
  return html.replace('<head>','<head>'+boot);
 }
 function setFrameHtml(html,onload){
- var f=id('frame');motorReady=false;f.name=mode;f.onload=onload||function(){id('loading').style.display='none'};f.srcdoc=html;
+ var f=id('frame');motorReady=false;f.name=mode;f.onload=onload||function(){id('loading').style.display='none'};
+ f.removeAttribute('src');
+ f.srcdoc=html;
+}
+function setFrameUrl(url,onload){
+ var f=id('frame');motorReady=false;f.name=mode;f.onload=onload||function(){id('loading').style.display='none'};
+ f.removeAttribute('srcdoc');
+ f.src=url;
 }
 function openTool(tool,title){
  clearTimeout(pendingTimer);pendingAttempts=0;pending=tool;motorReady=false;
@@ -324,7 +332,7 @@ function openTool(tool,title){
  if(tool==='payrollgroup'){setFrameHtml(decode64(PAYROLL_GROUP_B64));return}
  if(tool==='payroll'){setFrameHtml(decode64(PAYROLL_B64));return}
  if(tool==='turnos'){setFrameHtml(decode64(TURNOS_B64));return}
- if(tool==='perentorias'){setFrameHtml(injectPerentoriasBootstrap(decode64(PERENTORIAS_B64)));return}
+ if(tool==='perentorias'){setFrameUrl('./perentorias.html?v=68');return}
 
  setFrameHtml(injectMotorTool(decode64(MOTOR_B64),tool),function(){pendingTimer=setTimeout(sendPending,120)});
 }
@@ -450,7 +458,7 @@ window.addEventListener('keydown',function(e){if(e.key==='Escape'&&id('viewer').
 (function(){
   if('serviceWorker' in navigator){
     window.addEventListener('load',function(){
-      navigator.serviceWorker.register('./sw.js?v=64',{updateViaCache:'none'}).then(function(reg){
+      navigator.serviceWorker.register('./sw.js?v=68',{updateViaCache:'none'}).then(function(reg){
         try{reg.update();}catch(e){}
       }).catch(function(err){console.warn('No se pudo registrar la web app:',err);});
     });
