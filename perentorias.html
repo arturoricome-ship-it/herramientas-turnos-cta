@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de Perentorias</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root{
+  --bg-void:#0A0E12;
+  --bg-panel:#12181F;
+  --bg-raised:#1A222B;
+  --bg-raised-2:#202A35;
+  --hairline:#26313C;
+  --text-primary:#E8EEF2;
+  --text-muted:#7E8FA0;
+  --text-faint:#4E5D6B;
+  --accent:#22D3C0;
+  --accent-dim:#123B37;
+  --c-7n:#4FA3E3;
+  --c-7d:#F2B84B;
+  --c-perco:#E8664D;
+  --c-perli:#9B8CF2;
+  --c-real:#22D3C0;
+  --c-hfun:#6DD17C;
+  --danger:#E8664D;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg-void);
+  color:var(--text-primary);
+  font-family:'JetBrains Mono',monospace;
+  min-height:100vh;
+  padding:20px 14px 60px;
+}
+
+.wrap{max-width:920px;margin:0 auto;}
+
+/* ---- Header ---- */
+header{margin-bottom:22px;}
+.eyebrow{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  letter-spacing:.18em;
+  color:var(--accent);
+  text-transform:uppercase;
+  margin:0 0 8px;
+}
+h1{
+  font-family:'Space Grotesk',sans-serif;
+  font-weight:700;
+  font-size:28px;
+  letter-spacing:-0.01em;
+  margin:0 0 6px;
+  line-height:1.1;
+}
+.subtitle{
+  font-family:'Space Grotesk',sans-serif;
+  color:var(--text-muted);
+  font-size:14px;
+  margin:0;
+}
+
+/* ---- Summary board (signature element) ---- */
+.board{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:1px;
+  background:var(--hairline);
+  border:1px solid var(--hairline);
+  border-radius:10px;
+  overflow:hidden;
+  margin:20px 0;
+}
+.board-cell{
+  background:var(--bg-panel);
+  padding:14px 10px 12px;
+  text-align:center;
+  border-top:3px solid transparent;
+}
+.board-cell[data-board-cat]{cursor:pointer;transition:background .15s ease;}
+.board-cell[data-board-cat]:hover{background:var(--bg-raised);}
+.board-cell[data-board-cat]:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.board-cell.t7n{border-top-color:var(--c-7n);}
+.board-cell.t7d{border-top-color:var(--c-7d);}
+.board-cell.tperco{border-top-color:var(--c-perco);}
+.board-cell.tperli{border-top-color:var(--c-perli);}
+.board-cell.thfun{border-top-color:var(--c-hfun);}
+.board-label{
+  font-size:10px;
+  letter-spacing:.12em;
+  color:var(--text-muted);
+  text-transform:uppercase;
+  margin-bottom:6px;
+  font-family:'JetBrains Mono',monospace;
+  line-height:1.25;
+  min-height:25px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.board-label.with-real{gap:6px;flex-wrap:wrap;}
+.real-toggle{
+  appearance:none;
+  border:1px solid rgba(155,140,242,.42);
+  background:transparent;
+  color:var(--c-perli);
+  border-radius:999px;
+  padding:2px 7px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:8.5px;
+  font-weight:700;
+  line-height:1.35;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:background .15s ease,color .15s ease,border-color .15s ease,transform .05s ease;
+}
+.real-toggle:hover{background:rgba(155,140,242,.12);border-color:var(--c-perli);}
+.real-toggle:active{transform:scale(.96);}
+.real-toggle.is-active{background:var(--c-perli);border-color:var(--c-perli);color:#171229;}
+.real-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.th-with-toggle{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;}
+.real-mode-mark{font-size:9px;color:var(--c-perli);font-weight:700;white-space:nowrap;}
+.board-value-line,.perli-dual{
+  display:inline-flex;
+  align-items:baseline;
+  justify-content:flex-end;
+  gap:7px;
+  white-space:nowrap;
+}
+.board-value-line{justify-content:center;max-width:100%;}
+.real-inline{
+  color:var(--c-real);
+  font-size:9.5px;
+  font-weight:700;
+  letter-spacing:0;
+  text-transform:none;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.board-real{font-size:10px;}
+.real-inline[hidden]{display:none!important;}
+.board-value{
+  font-size:22px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.board-cell.t7n .board-value{color:var(--c-7n);}
+.board-cell.t7d .board-value{color:var(--c-7d);}
+.board-cell.tperco .board-value{color:var(--c-perco);}
+.board-cell.tperli .board-value{color:var(--c-perli);}
+.board-cell.thfun .board-value{color:var(--c-hfun);}
+
+.meta-row{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11.5px;color:var(--text-muted);margin:0 0 20px;
+  flex-wrap:wrap; gap:6px;
+}
+.meta-row b{color:var(--text-primary);font-weight:600;}
+
+/* ---- Panels ---- */
+.panel{
+  background:var(--bg-panel);
+  border:1px solid var(--hairline);
+  border-radius:10px;
+  padding:16px;
+  margin-bottom:16px;
+}
+.panel-title{
+  font-family:'Space Grotesk',sans-serif;
+  font-weight:600;
+  font-size:14px;
+  margin:0 0 12px;
+  display:flex;align-items:center;gap:8px;
+}
+.panel-title .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+
+/* ---- Import controls ---- */
+.drop{
+  border:1.5px dashed var(--hairline);
+  border-radius:8px;
+  padding:22px 12px;
+  text-align:center;
+  cursor:pointer;
+  transition:border-color .15s ease, background .15s ease;
+}
+.drop:hover, .drop.drag{
+  border-color:var(--accent);
+  background:var(--accent-dim);
+}
+.drop-icon{font-size:22px;margin-bottom:6px;opacity:.8;}
+.drop-text{font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text-primary);}
+.drop-sub{font-size:11px;color:var(--text-faint);margin-top:4px;}
+input[type=file]{display:none;}
+
+.or-sep{
+  display:flex;align-items:center;gap:10px;
+  margin:14px 0;color:var(--text-faint);font-size:10px;letter-spacing:.1em;
+}
+.or-sep::before,.or-sep::after{content:'';flex:1;height:1px;background:var(--hairline);}
+
+textarea{
+  width:100%;min-height:100px;
+  background:var(--bg-raised);
+  border:1px solid var(--hairline);
+  border-radius:8px;
+  color:var(--text-primary);
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  padding:10px;
+  resize:vertical;
+}
+textarea:focus{outline:none;border-color:var(--accent);}
+textarea::placeholder{color:var(--text-faint);}
+
+.btn{
+  font-family:'Space Grotesk',sans-serif;
+  font-weight:600;
+  font-size:13px;
+  border:none;
+  border-radius:7px;
+  padding:10px 16px;
+  cursor:pointer;
+  transition:opacity .15s ease, transform .05s ease;
+}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--accent);color:#04231F;}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--hairline);}
+.btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid rgba(232,102,77,.35);}
+.btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+
+.status-msg{
+  font-size:12px;
+  padding:10px 12px;
+  border-radius:7px;
+  margin-top:12px;
+  display:none;
+  font-family:'JetBrains Mono',monospace;
+}
+.status-msg.show{display:block;}
+.status-ok{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(34,211,192,.3);}
+.status-err{background:rgba(232,102,77,.1);color:var(--danger);border:1px solid rgba(232,102,77,.3);}
+
+/* ---- History ---- */
+.history-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:9px 0;border-bottom:1px solid var(--hairline);
+  font-size:12px;gap:8px;
+}
+.history-item:last-child{border-bottom:none;}
+.history-left{overflow:hidden;}
+.history-name{color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;font-size:12.5px;}
+.history-sub{color:var(--text-faint);font-size:10.5px;}
+.history-del{
+  background:none;border:none;color:var(--text-faint);cursor:pointer;
+  font-size:11px;padding:4px 8px;border-radius:5px;flex-shrink:0;
+  font-family:'JetBrains Mono',monospace;
+}
+.history-del:hover{color:var(--danger);background:rgba(232,102,77,.08);}
+.empty-hint{color:var(--text-faint);font-size:12px;padding:6px 0;}
+
+/* ---- Table / filters ---- */
+.filters-grid{
+  display:grid;
+  grid-template-columns:minmax(220px,1.5fr) repeat(4,minmax(145px,1fr));
+  gap:10px;
+  margin-bottom:10px;
+}
+.filter-field{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.filter-field > span{
+  color:var(--text-muted);
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.search-input,.filter-select{
+  width:100%;min-width:0;
+  background:var(--bg-raised);
+  border:1px solid var(--hairline);
+  border-radius:7px;
+  color:var(--text-primary);
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  padding:9px 10px;
+}
+.search-input:focus,.filter-select:focus{outline:none;border-color:var(--accent);}
+.search-input::placeholder{color:var(--text-faint);}
+.filter-select{cursor:pointer;}
+.table-actions{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.search-summary{font-size:11px;color:var(--text-faint);margin-left:auto;line-height:1.45;text-align:right;}
+.active-view-note{
+  width:100%;font-size:11px;color:var(--accent);background:var(--accent-dim);
+  border:1px solid rgba(34,211,192,.22);border-radius:7px;padding:8px 10px;display:none;
+}
+.active-view-note.show{display:block;}
+.table-scroll{overflow-x:auto;border:1px solid var(--hairline);border-radius:8px;}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:875px;}
+table.type-focused{min-width:520px;}
+.hidden-col{display:none!important;}
+.board-cell.is-muted{opacity:.34;}
+.history-actions{display:flex;gap:4px;align-items:center;flex:0 0 auto;}
+.history-view{
+  background:none;border:1px solid var(--hairline);color:var(--text-muted);cursor:pointer;
+  font-size:10.5px;padding:4px 8px;border-radius:5px;font-family:'JetBrains Mono',monospace;
+}
+.history-view:hover{color:var(--accent);border-color:rgba(34,211,192,.45);background:var(--accent-dim);}
+thead th{
+  text-align:left;
+  background:var(--bg-raised);
+  color:var(--text-muted);
+  font-weight:600;
+  padding:9px 10px;
+  font-size:10.5px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  cursor:pointer;
+  white-space:nowrap;
+  border-bottom:1px solid var(--hairline);
+}
+thead th:hover{color:var(--text-primary);}
+thead th.num{text-align:right;}
+tbody td{
+  padding:8px 10px;
+  border-bottom:1px solid var(--hairline);
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--bg-raised);}
+td.num{text-align:right;}
+td.nombre{font-family:'Space Grotesk',sans-serif;font-size:12.5px;color:var(--text-primary);max-width:180px;overflow:hidden;text-overflow:ellipsis;}
+td.idcell{color:var(--text-faint);font-size:11px;}
+.cat-7n{color:var(--c-7n);}
+.cat-7d{color:var(--c-7d);}
+.cat-perco{color:var(--c-perco);}
+.cat-perli{color:var(--c-perli);}
+.cat-hfun{color:var(--c-hfun);}
+.cat-zero{color:var(--text-faint);}
+td.total{font-weight:700;color:var(--text-primary);}
+.detail-value{
+  appearance:none;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:inherit;
+  padding:3px 5px;
+  margin:-3px -5px;
+  border-radius:5px;
+  cursor:pointer;
+  font-variant-numeric:tabular-nums;
+}
+.detail-value:hover{background:var(--bg-raised-2);text-decoration:underline;text-underline-offset:2px;}
+.detail-value:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+tfoot td{
+  padding:10px;font-weight:700;border-top:2px solid var(--hairline);
+  background:var(--bg-raised);
+}
+
+
+/* ---- Detail modal ---- */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1000;
+  display:none;align-items:center;justify-content:center;padding:18px;
+}
+.modal-backdrop.show{display:flex;}
+.modal-card{
+  width:min(680px,100%);max-height:min(760px,90vh);overflow:hidden;
+  background:var(--bg-panel);border:1px solid var(--hairline);border-radius:12px;
+  box-shadow:0 22px 80px rgba(0,0,0,.55);display:flex;flex-direction:column;
+}
+.modal-head{display:flex;justify-content:space-between;gap:14px;padding:16px;border-bottom:1px solid var(--hairline);}
+.modal-title{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin:0 0 4px;}
+.modal-sub{font-size:11.5px;color:var(--text-muted);margin:0;line-height:1.45;}
+.modal-close{background:transparent;border:1px solid var(--hairline);color:var(--text-muted);border-radius:7px;width:34px;height:34px;cursor:pointer;font-size:20px;line-height:1;flex:0 0 auto;}
+.modal-close:hover{color:var(--text-primary);background:var(--bg-raised);}
+.modal-body{padding:14px 16px 18px;overflow:auto;}
+.detail-note{font-size:11.5px;color:var(--c-7d);border:1px solid rgba(242,184,75,.28);background:rgba(242,184,75,.08);padding:9px 10px;border-radius:7px;margin-bottom:12px;line-height:1.45;}
+.detail-list{border:1px solid var(--hairline);border-radius:8px;overflow:auto;}
+.detail-row{display:grid;grid-template-columns:minmax(155px,1.2fr) minmax(150px,1fr) 80px;gap:10px;align-items:center;padding:10px 11px;border-bottom:1px solid var(--hairline);font-size:12px;}
+.detail-list.has-real .detail-row{grid-template-columns:minmax(150px,1.2fr) minmax(135px,1fr) 72px 72px;min-width:510px;}
+.detail-list.has-employee .detail-row{grid-template-columns:minmax(145px,1.1fr) minmax(175px,1.35fr) minmax(125px,.9fr) 72px;min-width:650px;}
+.detail-list.has-employee.has-real .detail-row{grid-template-columns:minmax(145px,1.05fr) minmax(175px,1.35fr) minmax(125px,.9fr) 70px 70px;min-width:735px;}
+.detail-employee{font-family:'Space Grotesk',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.detail-real{color:var(--c-perli);text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
+.real-detail-note{font-size:11.5px;color:var(--c-perli);border:1px solid rgba(155,140,242,.28);background:rgba(155,140,242,.08);padding:9px 10px;border-radius:7px;margin-bottom:12px;line-height:1.45;}
+.detail-row:last-child{border-bottom:none;}
+.detail-row.detail-head{background:var(--bg-raised);color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;position:sticky;top:0;}
+.detail-date{font-family:'Space Grotesk',sans-serif;}
+.detail-cat{color:var(--text-muted);}
+.detail-hours{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
+.detail-empty{font-size:12px;color:var(--text-faint);padding:10px 0;line-height:1.5;}
+body.modal-open{overflow:hidden;}
+
+@media (max-width:900px){
+  .filters-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .filter-field:first-child{grid-column:1/-1;}
+}
+@media (max-width:650px){
+  .board{grid-template-columns:repeat(2,1fr);}
+  .board-label{min-height:auto;}
+  .filters-grid{grid-template-columns:1fr;}
+  .filter-field:first-child{grid-column:auto;}
+  .search-summary{width:100%;margin-left:0;text-align:left;}
+  .detail-row{grid-template-columns:1.4fr 1fr 62px;font-size:11px;gap:6px;}
+}
+
+.footer-note{
+  text-align:center;color:var(--text-faint);font-size:10.5px;margin-top:24px;line-height:1.6;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">CTA Alicante · Control interno</p>
+    <h1>Registro de Perentorias</h1>
+    <p class="subtitle">Importa los listados mensuales y acumula las perentorias y horas HFUN por trabajador automáticamente.</p>
+  </header>
+
+  <div class="board" id="board">
+    <div class="board-cell t7n" data-board-cat="7N" tabindex="0" role="button" aria-label="Ver días de A librar"><div class="board-label">A librar</div><div class="board-value" id="tot-7n">0,00</div></div>
+    <div class="board-cell t7d" data-board-cat="7D" tabindex="0" role="button" aria-label="Ver días de A cobrar"><div class="board-label">A cobrar</div><div class="board-value" id="tot-7d">0,00</div></div>
+    <div class="board-cell tperli" data-board-cat="PERLI" tabindex="0" role="button" aria-label="Ver días de Sector a librar"><div class="board-label with-real"><span>Sector a librar</span><button type="button" class="real-toggle" data-real-toggle aria-pressed="false" title="Mostrar también el valor Real multiplicado por 1,75">Real</button></div><div class="board-value-line"><div class="board-value" id="tot-perli">0,00</div><span class="real-inline board-real" id="tot-perli-real" data-real-value hidden>Real 0,00</span></div></div>
+    <div class="board-cell tperco" data-board-cat="PERCO" tabindex="0" role="button" aria-label="Ver días de Sector a cobrar"><div class="board-label">Sector a cobrar</div><div class="board-value" id="tot-perco">0,00</div></div>
+    <div class="board-cell thfun" data-board-cat="HFUN8" tabindex="0" role="button" aria-label="Ver días de HFUN"><div class="board-label">HFUN</div><div class="board-value" id="tot-hfun">0,00</div></div>
+  </div>
+
+  <div class="meta-row">
+    <span><b id="meta-empleados">0</b> trabajadores en la vista · <b id="meta-registros">0</b> registros visibles</span>
+    <span><b id="meta-importaciones">0</b> importaciones</span>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title"><span class="dot"></span>Importar archivo</p>
+
+    <div class="drop" id="drop">
+      <div class="drop-icon">&#8595;</div>
+      <div class="drop-text">Toca para elegir un archivo CSV o TXT, o suéltalo aquí</div>
+      <div class="drop-sub">Puedes cargar una copia CSV exportada por esta misma página para trasladar todo el acumulado entre dispositivos. Para un PDF, copia su contenido y pégalo abajo</div>
+    </div>
+    <input type="file" id="fileInput" accept=".txt,.csv">
+
+    <div class="or-sep">O PEGA EL TEXTO</div>
+    <textarea id="pasteArea" placeholder="Pega aquí las filas copiadas del PDF o registros HFUN8. El analizador reconocerá ambos formatos automáticamente."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnImportar">Importar y acumular</button>
+      <button class="btn btn-ghost" id="btnLimpiarArea">Limpiar texto</button>
+    </div>
+
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title"><span class="dot"></span>Historial de importaciones</p>
+    <div id="historyList"><p class="empty-hint">Aún no has importado ningún archivo.</p></div>
+    <div class="btn-row" id="resetRow" style="display:none;">
+      <button class="btn btn-danger-ghost" id="btnReset">Borrar todo el acumulado</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title"><span class="dot"></span>Totales por trabajador</p>
+    <div class="filters-grid">
+      <label class="filter-field">
+        <span>Buscar empleado</span>
+        <input type="search" class="search-input" id="searchInput" placeholder="Nombre, apellido o ID…" autocomplete="off">
+      </label>
+      <label class="filter-field">
+        <span>Seleccionar empleado</span>
+        <select class="filter-select" id="employeeFilter"><option value="">Todos los empleados</option></select>
+      </label>
+      <label class="filter-field">
+        <span>Mes importado</span>
+        <select class="filter-select" id="monthFilter"><option value="">Todos los meses (acumulado)</option></select>
+      </label>
+      <label class="filter-field">
+        <span>Tipo de perentoria</span>
+        <select class="filter-select" id="typeFilter">
+          <option value="ALL">Todos los tipos</option>
+          <option value="7N">A librar</option>
+          <option value="7D">A cobrar</option>
+          <option value="PERLI">Sector a librar</option>
+          <option value="PERCO">Sector a cobrar</option>
+          <option value="HFUN8">HFUN</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Ordenar</span>
+        <select class="filter-select" id="sortFilter">
+          <option value="total-desc">Más perentorias → menos</option>
+          <option value="total-asc">Menos perentorias → más</option>
+          <option value="type-desc">Tipo visible: más → menos</option>
+          <option value="type-asc">Tipo visible: menos → más</option>
+          <option value="name-asc">Nombre A → Z</option>
+          <option value="name-desc">Nombre Z → A</option>
+          <option value="custom" disabled>Orden personalizado por columna</option>
+        </select>
+      </label>
+    </div>
+    <div class="table-actions">
+      <button class="btn btn-ghost" id="btnClearFilters">Limpiar filtros</button>
+      <button class="btn btn-ghost" id="btnExportBackup">Exportar copia CSV</button>
+      <button class="btn btn-ghost" id="btnExport">Exportar vista CSV</button>
+      <span class="search-summary" id="searchSummary">0 empleados</span>
+      <div class="active-view-note" id="activeViewNote"></div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="nombre">Nombre</th>
+            <th data-sort="id">ID</th>
+            <th class="num" data-sort="7N" data-col-cat="7N">A librar</th>
+            <th class="num" data-sort="7D" data-col-cat="7D">A cobrar</th>
+            <th class="num" data-sort="PERLI" data-col-cat="PERLI"><span class="th-with-toggle"><span>Sector a librar</span><button type="button" class="real-toggle" data-real-toggle aria-pressed="false" title="Mostrar también el valor Real multiplicado por 1,75">Real</button></span></th>
+            <th class="num" data-sort="PERCO" data-col-cat="PERCO">Sector a cobrar</th>
+            <th class="num" data-sort="HFUN8" data-col-cat="HFUN8">HFUN</th>
+            <th class="num" data-sort="total">Total general</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="8" class="empty-hint">Sin datos todavía.</td></tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2">TOTAL</td>
+            <td class="num" id="foot-7n" data-col-cat="7N">0,00</td>
+            <td class="num" id="foot-7d" data-col-cat="7D">0,00</td>
+            <td class="num" data-col-cat="PERLI"><span class="perli-dual"><span id="foot-perli">0,00</span><span class="real-inline" id="foot-perli-real" data-real-value hidden>Real 0,00</span></span></td>
+            <td class="num" id="foot-perco" data-col-cat="PERCO">0,00</td>
+            <td class="num" id="foot-hfun" data-col-cat="HFUN8">0,00</td>
+            <td class="num" id="foot-total">0,00</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+
+  <div class="modal-backdrop" id="detailModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <div class="modal-head">
+        <div>
+          <h2 class="modal-title" id="detailTitle">Detalle</h2>
+          <p class="modal-sub" id="detailSub"></p>
+        </div>
+        <button class="modal-close" id="detailClose" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body" id="detailBody"></div>
+    </div>
+  </div>
+
+  <p class="footer-note">Los datos se guardan de forma privada en el almacenamiento local de este navegador y persisten entre sesiones.<br>Las importaciones se acumulan automáticamente. «Exportar copia CSV» guarda los registros completos —fechas, empleados, tipos e historial— para poder cargarlos en otro dispositivo. «Exportar vista CSV» descarga únicamente la tabla filtrada que estás viendo.</p>
+
+</div>
+
+<script>
+const CATS = ['7N','7D','PERLI','PERCO','HFUN8'];
+const CAT_LABELS = {
+  '7N':'A librar',
+  '7D':'A cobrar',
+  'PERLI':'Sector a librar',
+  'PERCO':'Sector a cobrar',
+  'HFUN8':'HFUN'
+};
+const STORAGE_KEY = 'perentorias:imports';
+const REAL_MODE_KEY = 'perentorias:realMode';
+const REAL_MULTIPLIER = 1.75;
+
+let realMode = false;
+try{ realMode = localStorage.getItem(REAL_MODE_KEY) === '1'; }catch(e){}
+
+let imports = [];
+let sortKey = 'nombre';
+let sortDir = 1;
+
+function fmt(n){
+  return (Math.round(n*100)/100).toFixed(2).replace('.', ',');
+}
+
+function effectiveAmount(tipo, cantidad){
+  return Number(cantidad || 0);
+}
+
+function realAmount(cantidad){
+  return Number(cantidad || 0) * REAL_MULTIPLIER;
+}
+
+function syncRealControls(){
+  document.querySelectorAll('[data-real-toggle]').forEach(btn => {
+    btn.classList.toggle('is-active', realMode);
+    btn.setAttribute('aria-pressed', realMode ? 'true' : 'false');
+    btn.title = realMode
+      ? 'Ocultar el valor Real; la cifra original no cambia'
+      : 'Mostrar también el valor Real multiplicado por 1,75';
+  });
+  document.querySelectorAll('[data-real-value]').forEach(el => {
+    el.hidden = !realMode;
+  });
+}
+
+function setRealMode(enabled){
+  realMode = Boolean(enabled);
+  try{ localStorage.setItem(REAL_MODE_KEY, realMode ? '1' : '0'); }catch(e){}
+  syncRealControls();
+  renderView();
+}
+
+let lastParseInfo = {mode:'', dates:0, values:0, names:0};
+
+function cleanName(raw){
+  return String(raw || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s|;:.-]+|[\s|;:.-]+$/g, '')
+    .trim();
+}
+
+function isLikelyName(value){
+  const s = cleanName(value);
+  if(!s || !s.includes(',')) return false;
+  if(/\b(?:FECHA|REGISTRO|CRH|SUM|CANTIDAD|NOMBRE|PERENTORIAS|P[AÁ]GINA)\b/i.test(s)) return false;
+  if(/\d/.test(s)) return false;
+  return /^[\p{L}][\p{L}\p{M}\s.'’\-]*,\s*[\p{L}][\p{L}\p{M}\s.'’\-]*$/u.test(s);
+}
+
+function parseRowWise(text){
+  const records = [];
+  const lines = String(text || '').replace(/\f/g, '\n').split(/\r?\n/);
+  const rowRegex = /^\s*(\d{4}-\d{2}-\d{2})\s+(7N|7D|PERCO|PERLI|HFUN8|HFUN)\s+(\d+(?:[.,]\d{1,6}))\s+(\d{6})\s+(.+?)\s*$/i;
+
+  for(const line of lines){
+    const m = line.match(rowRegex);
+    if(!m) continue;
+    const nombre = cleanName(m[5]);
+    if(!isLikelyName(nombre)) continue;
+    records.push({
+      fecha:m[1],
+      tipo:/^HFUN/i.test(m[2]) ? 'HFUN8' : m[2].toUpperCase(),
+      cantidad:parseFloat(m[3].replace(',', '.')),
+      id:m[4],
+      nombre
+    });
+  }
+  return records;
+}
+
+function canonicalName(value){
+  return cleanName(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleUpperCase('es-ES');
+}
+
+function parsePagedPdf(text){
+  const source = String(text || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\r/g, '\n')
+    .replace(/\f/g, '\n\n');
+
+  const pageBlocks = source
+    .split(/\n\s*\n+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const dateRegex = /\d{4}-\d{2}-\d{2}/g;
+  const typeRegex = /\b(?:7N|7D|PERCO|PERLI|HFUN8|HFUN)\b/gi;
+  const valueRegex = /\b(\d+(?:[.,]\d{1,6}))\s+(\d{6})\b/g;
+
+  const pages = [];
+  const occurrences = [];
+  const known = Object.create(null);
+  let conflict = false;
+  let totalDates = 0;
+  let totalTypes = 0;
+  let totalValues = 0;
+  let totalNames = 0;
+
+  function rememberName(id, name){
+    name = cleanName(name);
+    if(!isLikelyName(name)) return false;
+    if(known[id]){
+      if(canonicalName(known[id]) !== canonicalName(name)) conflict = true;
+      return !conflict;
+    }
+    known[id] = name;
+    return true;
+  }
+
+  for(const block of pageBlocks){
+    const lines = block.split(/\n+/).map(cleanName).filter(Boolean);
+    const valueLineIndexes = [];
+
+    lines.forEach((line, index) => {
+      valueRegex.lastIndex = 0;
+      if(valueRegex.test(line)) valueLineIndexes.push(index);
+    });
+
+    if(valueLineIndexes.length === 0) continue;
+
+    const firstValueLine = Math.min(...valueLineIndexes);
+    const lastValueLine = Math.max(...valueLineIndexes);
+    const headingPart = lines.slice(0, firstValueLine).join(' ');
+    const valuePart = lines.slice(firstValueLine, lastValueLine + 1).join(' ');
+
+    const dates = headingPart.match(dateRegex) || [];
+    const types = (headingPart.match(typeRegex) || []).map(v => /^HFUN/i.test(v) ? 'HFUN8' : v.toUpperCase());
+    const values = [];
+    let m;
+    valueRegex.lastIndex = 0;
+    while((m = valueRegex.exec(valuePart)) !== null){
+      values.push({cantidad:parseFloat(m[1].replace(',', '.')), id:m[2]});
+    }
+
+    const nameLines = lines
+      .slice(lastValueLine + 1)
+      .filter(line => line.includes(','))
+      .map(cleanName);
+
+    const nameCount = nameLines.reduce((sum, line) => sum + (line.match(/,/g) || []).length, 0);
+
+    totalDates += dates.length;
+    totalTypes += types.length;
+    totalValues += values.length;
+    totalNames += nameCount;
+
+    if(
+      dates.length === 0 ||
+      dates.length !== types.length ||
+      dates.length !== values.length ||
+      dates.length !== nameCount
+    ){
+      lastParseInfo = {
+        mode:'pdf-pages', dates:totalDates, values:totalValues, names:totalNames,
+        types:totalTypes, pages:pages.length + 1, unresolved:0
+      };
+      return [];
+    }
+
+    const pageOccurrences = [];
+    let cursor = 0;
+    for(const line of nameLines){
+      const count = (line.match(/,/g) || []).length;
+      const ids = values.slice(cursor, cursor + count).map(v => v.id);
+      if(ids.length !== count) return [];
+
+      const occurrence = {ids, text:line};
+      pageOccurrences.push(occurrence);
+      occurrences.push(occurrence);
+
+      if(count === 1) rememberName(ids[0], line);
+      cursor += count;
+    }
+
+    pages.push({dates, types, values, occurrences:pageOccurrences});
+  }
+
+  if(pages.length === 0 || conflict){
+    lastParseInfo = {
+      mode:'pdf-pages', dates:totalDates, values:totalValues, names:totalNames,
+      types:totalTypes, pages:pages.length, unresolved:0
+    };
+    return [];
+  }
+
+  let equations = occurrences
+    .filter(o => o.ids.length > 1)
+    .map(o => ({ids:[...o.ids], text:cleanName(o.text)}));
+
+  function processEquation(eq){
+    let ids = [...eq.ids];
+    let text = cleanName(eq.text);
+    const assignments = [];
+    let changed = true;
+
+    while(ids.length && changed){
+      changed = false;
+
+      const firstName = known[ids[0]];
+      if(firstName){
+        if(ids.length === 1 && canonicalName(text) === canonicalName(firstName)){
+          return {equations:[], assignments, changed:true};
+        }
+        if(text.startsWith(firstName + ' ')){
+          text = text.slice(firstName.length).trim();
+          ids.shift();
+          changed = true;
+          continue;
+        }
+      }
+
+      if(ids.length){
+        const lastName = known[ids[ids.length - 1]];
+        if(lastName && text.endsWith(' ' + lastName)){
+          text = text.slice(0, -(lastName.length + 1)).trim();
+          ids.pop();
+          changed = true;
+        }
+      }
+    }
+
+    if(ids.length === 0){
+      return {equations:[], assignments, changed:true};
+    }
+
+    if(ids.length === 1){
+      if((text.match(/,/g) || []).length === 1 && isLikelyName(text)){
+        assignments.push({id:ids[0], name:text});
+        return {equations:[], assignments, changed:true};
+      }
+      return {equations:[{ids, text}], assignments, changed:false};
+    }
+
+    for(let j = 1; j < ids.length - 1; j++){
+      const anchor = known[ids[j]];
+      if(!anchor) continue;
+
+      let from = 0;
+      while(from < text.length){
+        const pos = text.indexOf(anchor, from);
+        if(pos < 0) break;
+
+        const beforeBoundary = pos === 0 || text[pos - 1] === ' ';
+        const end = pos + anchor.length;
+        const afterBoundary = end === text.length || text[end] === ' ';
+
+        if(beforeBoundary && afterBoundary){
+          const before = text.slice(0, pos).trim();
+          const after = text.slice(end).trim();
+          const beforeCount = (before.match(/,/g) || []).length;
+          const afterCount = (after.match(/,/g) || []).length;
+
+          if(beforeCount === j && afterCount === ids.length - j - 1){
+            const sub = [];
+            if(before) sub.push({ids:ids.slice(0, j), text:before});
+            if(after) sub.push({ids:ids.slice(j + 1), text:after});
+            return {equations:sub, assignments, changed:true};
+          }
+        }
+        from = pos + 1;
+      }
+    }
+
+    return {equations:[{ids, text}], assignments, changed:false};
+  }
+
+  for(let pass = 0; pass < 100 && equations.length; pass++){
+    const next = [];
+    const assignments = [];
+    let progress = false;
+
+    for(const eq of equations){
+      const result = processEquation(eq);
+      next.push(...result.equations);
+      assignments.push(...result.assignments);
+      if(result.changed) progress = true;
+    }
+
+    for(const item of assignments){
+      if(!known[item.id]){
+        if(rememberName(item.id, item.name)) progress = true;
+      }else if(canonicalName(known[item.id]) !== canonicalName(item.name)){
+        conflict = true;
+      }
+    }
+
+    equations = next;
+    if(conflict || !progress) break;
+  }
+
+  const unresolvedIds = new Set();
+  equations.forEach(eq => eq.ids.forEach(id => {
+    if(!known[id]) unresolvedIds.add(id);
+  }));
+
+  if(conflict || equations.length > 0 || unresolvedIds.size > 0){
+    lastParseInfo = {
+      mode:'pdf-pages', dates:totalDates, values:totalValues, names:totalNames,
+      types:totalTypes, pages:pages.length, unresolved:unresolvedIds.size || equations.length
+    };
+    return [];
+  }
+
+  for(const occurrence of occurrences){
+    const rebuilt = occurrence.ids.map(id => known[id]).join(' ');
+    if(cleanName(rebuilt) !== cleanName(occurrence.text)){
+      lastParseInfo = {
+        mode:'pdf-pages', dates:totalDates, values:totalValues, names:totalNames,
+        types:totalTypes, pages:pages.length, unresolved:1
+      };
+      return [];
+    }
+  }
+
+  const records = [];
+  for(const page of pages){
+    for(let i = 0; i < page.values.length; i++){
+      const value = page.values[i];
+      records.push({
+        fecha:page.dates[i],
+        tipo:page.types[i],
+        cantidad:value.cantidad,
+        id:value.id,
+        nombre:known[value.id]
+      });
+    }
+  }
+
+  lastParseInfo = {
+    mode:'pdf-pages', dates:totalDates, values:totalValues, names:totalNames,
+    types:totalTypes, pages:pages.length, unresolved:0
+  };
+  return records;
+}
+
+function parseRecords(text){
+  const rowWise = parseRowWise(text);
+  const pagedPdf = parsePagedPdf(text);
+
+  if(pagedPdf.length > rowWise.length){
+    lastParseInfo.mode = 'pdf-pages';
+    return pagedPdf;
+  }
+
+  if(rowWise.length > 0){
+    lastParseInfo = {mode:'rows', dates:rowWise.length, values:rowWise.length, names:rowWise.length, types:rowWise.length, pages:1, unresolved:0};
+    return rowWise;
+  }
+
+  return [];
+}
+
+function aggregateRecords(records){
+  const totals = {};
+  for(const r of records){
+    if(!totals[r.id]) totals[r.id] = {nombre:r.nombre, '7N':0,'7D':0,PERCO:0,PERLI:0,HFUN8:0};
+    totals[r.id][r.tipo] += r.cantidad;
+    totals[r.id].nombre = r.nombre;
+  }
+  return totals;
+}
+
+function grandTotals(){
+  const g = {};
+  for(const imp of imports){
+    for(const id in imp.totals){
+      const t = imp.totals[id];
+      if(!g[id]) g[id] = {nombre:t.nombre, '7N':0,'7D':0,PERCO:0,PERLI:0,HFUN8:0};
+      g[id].nombre = t.nombre;
+      for(const c of CATS) g[id][c] += Number(t[c] || 0);
+    }
+  }
+  return g;
+}
+
+async function loadImports(){
+  try{
+    if(window.storage && typeof window.storage.get === 'function'){
+      const res = await window.storage.get(STORAGE_KEY, false);
+      imports = res && res.value ? JSON.parse(res.value) : [];
+    }else{
+      imports = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    }
+  }catch(e){
+    imports = [];
+  }
+}
+
+async function saveImports(){
+  try{
+    if(window.storage && typeof window.storage.set === 'function'){
+      await window.storage.set(STORAGE_KEY, JSON.stringify(imports), false);
+    }else{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(imports));
+    }
+  }catch(e){
+    showStatus('No se pudo guardar en el almacenamiento persistente. Los datos podrían perderse al recargar.', 'err');
+  }
+}
+
+function showStatus(msg, kind){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status-msg show ' + (kind === 'err' ? 'status-err' : 'status-ok');
+}
+
+function hideStatus(){
+  const el = document.getElementById('statusMsg');
+  el.className = 'status-msg';
+}
+
+
+function makeImportFromRecords(records, filename, timestamp, originKey){
+  const totals = aggregateRecords(records);
+  return {
+    id: 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    originKey: originKey || '',
+    filename: filename || 'Archivo importado',
+    timestamp: timestamp || new Date().toISOString(),
+    recordCount: records.length,
+    employeeCount: Object.keys(totals).length,
+    totals,
+    months: [...new Set(records.map(r => String(r.fecha || '').slice(0,7)).filter(m => /^\d{4}-\d{2}$/.test(m)))].sort(),
+    records: records.map(r => ({fecha:r.fecha, tipo:r.tipo, cantidad:Number(r.cantidad || 0), id:String(r.id), nombre:r.nombre}))
+  };
+}
+
+function csvCell(value){
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function parseCSVRows(text){
+  const source = String(text || '').replace(/^\uFEFF/, '');
+  const firstLine = source.split(/\r?\n/, 1)[0] || '';
+  const delimiter = (firstLine.match(/;/g) || []).length >= (firstLine.match(/,/g) || []).length ? ';' : ',';
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+
+  for(let i = 0; i < source.length; i++){
+    const ch = source[i];
+    if(quoted){
+      if(ch === '"'){
+        if(source[i + 1] === '"'){
+          cell += '"';
+          i++;
+        }else{
+          quoted = false;
+        }
+      }else{
+        cell += ch;
+      }
+    }else if(ch === '"'){
+      quoted = true;
+    }else if(ch === delimiter){
+      row.push(cell.trim());
+      cell = '';
+    }else if(ch === '\n'){
+      row.push(cell.trim().replace(/\r$/, ''));
+      if(row.some(v => v !== '')) rows.push(row);
+      row = [];
+      cell = '';
+    }else{
+      cell += ch;
+    }
+  }
+  row.push(cell.trim().replace(/\r$/, ''));
+  if(row.some(v => v !== '')) rows.push(row);
+  return rows;
+}
+
+function normalizeCSVHeader(value){
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function csvNumber(value){
+  const s = String(value ?? '').trim().replace(/\s/g, '');
+  if(!s) return 0;
+  const normalized = s.includes(',') && s.includes('.')
+    ? (s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, ''))
+    : s.replace(',', '.');
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function csvColumn(headers, aliases){
+  const normalized = headers.map(normalizeCSVHeader);
+  for(const alias of aliases){
+    const index = normalized.indexOf(normalizeCSVHeader(alias));
+    if(index >= 0) return index;
+  }
+  return -1;
+}
+
+function categoryFromCSV(value){
+  const v = normalizeCSVHeader(value);
+  if(v === '7n' || v === 'a librar') return '7N';
+  if(v === '7d' || v === 'a cobrar') return '7D';
+  if(v === 'perli' || v === 'sector a librar') return 'PERLI';
+  if(v === 'perco' || v === 'sector a cobrar') return 'PERCO';
+  if(v === 'hfun8' || v === 'hfun') return 'HFUN8';
+  return '';
+}
+
+async function importBackupCSV(rows, filename){
+  const headers = rows[0] || [];
+  const idxFormat = csvColumn(headers, ['Formato']);
+  const idxImport = csvColumn(headers, ['ImportID','ID importación']);
+  const idxFile = csvColumn(headers, ['Archivo']);
+  const idxTimestamp = csvColumn(headers, ['FechaImportacion','Fecha importación']);
+  const idxDate = csvColumn(headers, ['Fecha']);
+  const idxType = csvColumn(headers, ['Tipo']);
+  const idxAmount = csvColumn(headers, ['Cantidad','Horas']);
+  const idxId = csvColumn(headers, ['ID empleado','ID']);
+  const idxName = csvColumn(headers, ['Nombre']);
+
+  if([idxFormat,idxImport,idxDate,idxType,idxAmount,idxId,idxName].some(i => i < 0)) return false;
+  const formatValue = String(rows[1]?.[idxFormat] || '').trim().toUpperCase();
+  if(formatValue !== 'PERENTORIAS_BACKUP') return false;
+
+  const grouped = new Map();
+  for(const row of rows.slice(1)){
+    const sourceId = String(row[idxImport] || '').trim();
+    const tipo = categoryFromCSV(row[idxType]);
+    const id = String(row[idxId] || '').trim();
+    const nombre = cleanName(row[idxName]);
+    const cantidad = csvNumber(row[idxAmount]);
+    const fecha = String(row[idxDate] || '').trim();
+    if(!sourceId || !tipo || !/^\d{6}$/.test(id) || !nombre || cantidad <= 0) continue;
+
+    if(!grouped.has(sourceId)){
+      grouped.set(sourceId, {
+        sourceId,
+        filename:String(row[idxFile] || filename || 'Copia CSV').trim(),
+        timestamp:String(row[idxTimestamp] || '').trim(),
+        records:[],
+        legacyTotals:{}
+      });
+    }
+    const group = grouped.get(sourceId);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(fecha)){
+      group.records.push({fecha,tipo,cantidad,id,nombre});
+    }else{
+      if(!group.legacyTotals[id]) group.legacyTotals[id] = {nombre,'7N':0,'7D':0,PERLI:0,PERCO:0,HFUN8:0};
+      group.legacyTotals[id][tipo] += cantidad;
+      group.legacyTotals[id].nombre = nombre;
+    }
+  }
+
+  if(grouped.size === 0) return false;
+  const existingKeys = new Set(imports.flatMap(imp => [String(imp.id || ''), String(imp.originKey || '')]).filter(Boolean));
+  let addedImports = 0;
+  let addedRecords = 0;
+  let skipped = 0;
+
+  for(const group of grouped.values()){
+    if(existingKeys.has(group.sourceId)){
+      skipped++;
+      continue;
+    }
+    if(group.records.length){
+      const imp = makeImportFromRecords(group.records, group.filename, group.timestamp || new Date().toISOString(), group.sourceId);
+      imports.push(imp);
+      addedRecords += imp.recordCount;
+      addedImports++;
+    }
+    if(Object.keys(group.legacyTotals).length){
+      const legacyCount = Object.values(group.legacyTotals).reduce((sum,t) => sum + CATS.filter(cat => Number(t[cat] || 0) > 0).length, 0);
+      imports.push({
+        id:'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+        originKey:group.sourceId,
+        filename:group.filename,
+        timestamp:group.timestamp || new Date().toISOString(),
+        recordCount:legacyCount,
+        employeeCount:Object.keys(group.legacyTotals).length,
+        totals:group.legacyTotals,
+        months:[]
+      });
+      addedRecords += legacyCount;
+      addedImports++;
+    }
+  }
+
+  if(addedImports === 0){
+    showStatus(skipped ? 'Esta copia CSV ya estaba importada. No se ha duplicado el acumulado.' : 'La copia CSV no contenía registros válidos.', skipped ? 'ok' : 'err');
+    return true;
+  }
+  await saveImports();
+  renderAll();
+  showStatus(`Copia CSV cargada: ${addedImports} importaciones y ${addedRecords} registros añadidos al acumulado.${skipped ? ` Se omitieron ${skipped} importaciones ya existentes.` : ''}`, 'ok');
+  return true;
+}
+
+async function importDetailedCSV(rows, filename){
+  const headers = rows[0] || [];
+  const idxDate = csvColumn(headers, ['Fecha','Día','Dia']);
+  const idxType = csvColumn(headers, ['Tipo','Concepto']);
+  const idxAmount = csvColumn(headers, ['Cantidad','Horas']);
+  const idxId = csvColumn(headers, ['ID empleado','ID']);
+  const idxName = csvColumn(headers, ['Nombre','Empleado']);
+  if([idxDate,idxType,idxAmount,idxId,idxName].some(i => i < 0)) return false;
+
+  const records = [];
+  for(const row of rows.slice(1)){
+    const fecha = String(row[idxDate] || '').trim();
+    const tipo = categoryFromCSV(row[idxType]);
+    const cantidad = csvNumber(row[idxAmount]);
+    const id = String(row[idxId] || '').trim();
+    const nombre = cleanName(row[idxName]);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(fecha) && tipo && cantidad > 0 && /^\d{6}$/.test(id) && nombre){
+      records.push({fecha,tipo,cantidad,id,nombre});
+    }
+  }
+  if(!records.length) return false;
+  imports.push(makeImportFromRecords(records, filename, new Date().toISOString(), ''));
+  await saveImports();
+  renderAll();
+  showStatus(`CSV importado y acumulado: ${records.length} registros de ${Object.keys(aggregateRecords(records)).length} trabajadores.`, 'ok');
+  return true;
+}
+
+async function importAggregateCSV(rows, filename){
+  const headers = rows[0] || [];
+  const idxName = csvColumn(headers, ['Nombre','Empleado']);
+  const idxId = csvColumn(headers, ['ID']);
+  if(idxName < 0 || idxId < 0) return false;
+
+  const categoryColumns = {
+    '7N':csvColumn(headers, ['A librar','7N']),
+    '7D':csvColumn(headers, ['A cobrar','7D']),
+    'PERLI':csvColumn(headers, ['Sector a librar','PERLI']),
+    'PERCO':csvColumn(headers, ['Sector a cobrar','PERCO']),
+    'HFUN8':csvColumn(headers, ['HFUN','HFUN8'])
+  };
+  if(Object.values(categoryColumns).every(i => i < 0)) return false;
+
+  const totals = {};
+  for(const row of rows.slice(1)){
+    const id = String(row[idxId] || '').trim();
+    const nombre = cleanName(row[idxName]);
+    if(!/^\d{6}$/.test(id) || !nombre) continue;
+    const t = {nombre,'7N':0,'7D':0,PERLI:0,PERCO:0,HFUN8:0};
+    let hasValue = false;
+    for(const cat of CATS){
+      const index = categoryColumns[cat];
+      if(index < 0) continue;
+      t[cat] = csvNumber(row[index]);
+      if(t[cat] > 0) hasValue = true;
+    }
+    if(hasValue) totals[id] = t;
+  }
+  if(!Object.keys(totals).length) return false;
+
+  const recordCount = Object.values(totals).reduce((sum,t) => sum + CATS.filter(cat => Number(t[cat] || 0) > 0).length, 0);
+  imports.push({
+    id:'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    originKey:'',
+    filename:filename || 'CSV acumulado',
+    timestamp:new Date().toISOString(),
+    recordCount,
+    employeeCount:Object.keys(totals).length,
+    totals,
+    months:[]
+  });
+  await saveImports();
+  renderAll();
+  showStatus(`CSV acumulado importado: ${Object.keys(totals).length} trabajadores. Se han conservado las horas, pero este formato resumido no contiene los días. Para trasladar también fechas e historial usa «Exportar copia CSV».`, 'ok');
+  return true;
+}
+
+async function importCSV(text, filename){
+  const rows = parseCSVRows(text);
+  if(rows.length < 2){
+    showStatus('El CSV está vacío o no tiene filas de datos.', 'err');
+    return;
+  }
+  if(await importBackupCSV(rows, filename)) return;
+  if(await importDetailedCSV(rows, filename)) return;
+  if(await importAggregateCSV(rows, filename)) return;
+  showStatus('No reconozco el formato de este CSV. Usa un archivo generado con «Exportar copia CSV» o un CSV con Fecha, Tipo, Cantidad, ID y Nombre.', 'err');
+}
+
+async function doImport(text, filename){
+  hideStatus();
+  const records = parseRecords(text);
+  if(records.length === 0){
+    const p = lastParseInfo;
+    if(p.dates || p.values || p.names){
+      showStatus(`No se ha importado nada para evitar mezclar trabajadores. He detectado ${p.dates} fechas, ${p.types || 0} tipos, ${p.values} cantidades/ID y ${p.names} nombres${p.unresolved ? `; quedan ${p.unresolved} nombres sin poder separar con seguridad` : ''}. Copia el contenido completo del PDF, incluyendo todas las páginas.`, 'err');
+    }else{
+      showStatus('No se encontraron registros reconocibles en el texto. Revisa el formato (Fecha / 7N-7D-PERCO-PERLI-HFUN8 / Cantidad / ID / Nombre).', 'err');
+    }
+    return;
+  }
+  const totals = aggregateRecords(records);
+  imports.push(makeImportFromRecords(records, filename || 'Texto pegado', new Date().toISOString(), ''));
+  await saveImports();
+  renderAll();
+  const modo = lastParseInfo.mode === 'pdf-pages' ? ` PDF reconstruido correctamente: ${lastParseInfo.pages} páginas.` : '';
+  showStatus(`Importado: ${records.length} registros de ${Object.keys(totals).length} trabajadores. Totales acumulados actualizados.${modo}`, 'ok');
+}
+
+async function deleteImport(id){
+  imports = imports.filter(i => i.id !== id);
+  await saveImports();
+  renderAll();
+}
+
+async function resetAll(){
+  if(!confirm('Esto borrará TODAS las importaciones acumuladas. ¿Continuar?')) return;
+  imports = [];
+  await saveImports();
+  renderAll();
+}
+
+function renderBoard(){
+  const g = grandTotals();
+  const sums = {'7N':0,'7D':0,PERCO:0,PERLI:0};
+  let totalRecords = 0;
+  for(const id in g) for(const c of CATS) sums[c] += g[id][c];
+  for(const imp of imports) totalRecords += imp.recordCount;
+
+  document.getElementById('tot-7n').textContent = fmt(sums['7N']);
+  document.getElementById('tot-7d').textContent = fmt(sums['7D']);
+  document.getElementById('tot-perco').textContent = fmt(sums.PERCO);
+  document.getElementById('tot-perli').textContent = fmt(sums.PERLI);
+
+  document.getElementById('meta-empleados').textContent = Object.keys(g).length;
+  document.getElementById('meta-registros').textContent = totalRecords;
+  document.getElementById('meta-importaciones').textContent = imports.length;
+
+  document.getElementById('foot-7n').textContent = fmt(sums['7N']);
+  document.getElementById('foot-7d').textContent = fmt(sums['7D']);
+  document.getElementById('foot-perli').textContent = fmt(sums.PERLI);
+  document.getElementById('foot-perco').textContent = fmt(sums.PERCO);
+  document.getElementById('foot-total').textContent = fmt(sums['7N']+sums['7D']+sums.PERCO+sums.PERLI);
+}
+
+function renderHistory(){
+  const box = document.getElementById('historyList');
+  const resetRow = document.getElementById('resetRow');
+  if(imports.length === 0){
+    box.innerHTML = '<p class="empty-hint">Aún no has importado ningún archivo.</p>';
+    resetRow.style.display = 'none';
+    return;
+  }
+  resetRow.style.display = 'flex';
+  const sorted = [...imports].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  box.innerHTML = sorted.map(imp => {
+    const d = new Date(imp.timestamp);
+    const fecha = d.toLocaleDateString('es-ES') + ' ' + d.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+    return `<div class="history-item">
+      <div class="history-left">
+        <span class="history-name">${escapeHtml(imp.filename)}</span>
+        <span class="history-sub">${fecha} · ${imp.recordCount} registros · ${imp.employeeCount} trabajadores</span>
+      </div>
+      <button class="history-del" data-del="${imp.id}">Eliminar</button>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', () => deleteImport(btn.getAttribute('data-del')));
+  });
+}
+
+function normalizeSearch(value){
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('es-ES')
+    .trim();
+}
+
+function detailButton(value, id, cat, cssClass){
+  const amount = Number(value || 0);
+  if(amount <= 0) return `<span class="${cssClass} cat-zero">${fmt(0)}</span>`;
+  return `<button type="button" class="detail-value ${cssClass}" data-detail-id="${id}" data-detail-cat="${cat}" title="Ver los días">${fmt(amount)}</button>`;
+}
+
+function perliCell(rawValue, realValue, id){
+  const raw = Number(rawValue || 0);
+  const real = Number(realValue || 0);
+  return `<span class="perli-dual">${detailButton(raw, id, 'PERLI', raw>0?'cat-perli':'cat-zero')}<span class="real-inline" data-real-value ${realMode ? '' : 'hidden'}>Real ${fmt(real)}</span></span>`;
+}
+
+function renderTable(){
+  const g = grandTotals();
+  const search = normalizeSearch(document.getElementById('searchInput').value);
+  let rows = Object.entries(g).map(([id, t]) => ({
+    id, nombre: t.nombre,
+    '7N': t['7N'], '7D': t['7D'], PERLI: t.PERLI, PERCO: t.PERCO,
+    total: t['7N']+t['7D']+t.PERLI+t.PERCO
+  }));
+
+  if(search){
+    rows = rows.filter(r => normalizeSearch(r.nombre).includes(search) || normalizeSearch(r.id).includes(search));
+  }
+
+  rows.sort((a,b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if(typeof va === 'string'){ va = normalizeSearch(va); vb = normalizeSearch(vb); }
+    if(va < vb) return -1*sortDir;
+    if(va > vb) return 1*sortDir;
+    return 0;
+  });
+
+  document.getElementById('searchSummary').textContent = `${rows.length} ${rows.length === 1 ? 'empleado' : 'empleados'}`;
+
+  const body = document.getElementById('tableBody');
+  if(rows.length === 0){
+    body.innerHTML = '<tr><td colspan="7" class="empty-hint">Sin resultados.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td class="nombre" title="${escapeHtml(r.nombre)}">${escapeHtml(r.nombre)}</td>
+      <td class="idcell">${r.id}</td>
+      <td class="num">${detailButton(r['7N'], r.id, '7N', r['7N']>0?'cat-7n':'cat-zero')}</td>
+      <td class="num">${detailButton(r['7D'], r.id, '7D', r['7D']>0?'cat-7d':'cat-zero')}</td>
+      <td class="num">${detailButton(r.PERLI, r.id, 'PERLI', r.PERLI>0?'cat-perli':'cat-zero')}</td>
+      <td class="num">${detailButton(r.PERCO, r.id, 'PERCO', r.PERCO>0?'cat-perco':'cat-zero')}</td>
+      <td class="num total">${detailButton(r.total, r.id, 'ALL', 'total')}</td>
+    </tr>
+  `).join('');
+}
+
+function getExpectedDetailTotal(employeeId, category){
+  const g = grandTotals();
+  if(employeeId){
+    const row = g[employeeId];
+    if(!row) return 0;
+    if(category === 'ALL') return CATS.reduce((sum, cat) => sum + Number(row[cat] || 0), 0);
+    return Number(row[category] || 0);
+  }
+  let total = 0;
+  for(const id in g){
+    if(category === 'ALL') total += CATS.reduce((sum, cat) => sum + Number(g[id][cat] || 0), 0);
+    else total += Number(g[id][category] || 0);
+  }
+  return total;
+}
+
+function collectDetail(employeeId, category){
+  const grouped = new Map();
+  let detailedTotal = 0;
+
+  for(const imp of imports){
+    if(!Array.isArray(imp.records)) continue;
+    for(const r of imp.records){
+      if(employeeId && String(r.id) !== String(employeeId)) continue;
+      if(category !== 'ALL' && r.tipo !== category) continue;
+      const key = `${r.fecha}|${r.tipo}`;
+      grouped.set(key, (grouped.get(key) || 0) + Number(r.cantidad || 0));
+      detailedTotal += Number(r.cantidad || 0);
+    }
+  }
+
+  const rows = [...grouped.entries()].map(([key, cantidad]) => {
+    const [fecha, tipo] = key.split('|');
+    return {fecha, tipo, cantidad};
+  }).sort((a,b) => a.fecha.localeCompare(b.fecha) || CATS.indexOf(a.tipo) - CATS.indexOf(b.tipo));
+
+  const expectedTotal = getExpectedDetailTotal(employeeId, category);
+  const legacyTotal = Math.max(0, expectedTotal - detailedTotal);
+  return {rows, expectedTotal, detailedTotal, legacyTotal};
+}
+
+function formatDay(fecha){
+  const d = new Date(`${fecha}T00:00:00`);
+  if(Number.isNaN(d.getTime())) return fecha;
+  const weekday = d.toLocaleDateString('es-ES', {weekday:'long'});
+  const numeric = d.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit', year:'numeric'});
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} · ${numeric}`;
+}
+
+function openDetail(employeeId, category){
+  const modal = document.getElementById('detailModal');
+  const g = grandTotals();
+  const employee = employeeId && g[employeeId] ? g[employeeId].nombre : '';
+  const categoryName = category === 'ALL' ? 'Total' : CAT_LABELS[category];
+  const detail = collectDetail(employeeId, category);
+  const uniqueDays = new Set(detail.rows.map(r => r.fecha)).size;
+
+  document.getElementById('detailTitle').textContent = employee
+    ? `${categoryName} · ${employee}`
+    : `${categoryName} · todos los empleados`;
+  document.getElementById('detailSub').textContent = `${fmt(detail.expectedTotal)} horas · ${uniqueDays} ${uniqueDays === 1 ? 'día con detalle' : 'días con detalle'}`;
+
+  let html = '';
+  if(detail.legacyTotal > 0.001){
+    html += `<div class="detail-note">${fmt(detail.legacyTotal)} horas proceden de importaciones antiguas que solo guardaban el total. Para ver también esos días, elimina esas importaciones y vuelve a importar sus PDF con esta versión.</div>`;
+  }
+
+  if(detail.rows.length === 0){
+    html += '<div class="detail-empty">No hay fechas detalladas disponibles para este número.</div>';
+  }else{
+    html += '<div class="detail-list">';
+    html += '<div class="detail-row detail-head"><span>Día</span><span>Concepto</span><span class="detail-hours">Horas</span></div>';
+    html += detail.rows.map(r => `<div class="detail-row"><span class="detail-date">${escapeHtml(formatDay(r.fecha))}</span><span class="detail-cat">${escapeHtml(CAT_LABELS[r.tipo] || r.tipo)}</span><span class="detail-hours">${fmt(r.cantidad)}</span></div>`).join('');
+    html += '</div>';
+  }
+
+  document.getElementById('detailBody').innerHTML = html;
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  document.getElementById('detailClose').focus();
+}
+
+function closeDetail(){
+  const modal = document.getElementById('detailModal');
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderAll(){
+  renderBoard();
+  renderHistory();
+  renderTable();
+}
+
+function exportCSV(){
+  const g = grandTotals();
+  const rows = Object.entries(g).map(([id,t]) => [
+    t.nombre, id, fmt(t['7N']), fmt(t['7D']), fmt(t.PERLI), fmt(t.PERCO),
+    fmt(t['7N']+t['7D']+t.PERLI+t.PERCO)
+  ]);
+  rows.sort((a,b) => a[0].localeCompare(b[0], 'es'));
+  const header = ['Nombre','ID','A librar','A cobrar','Sector a librar','Sector a cobrar','Total'];
+  const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'perentorias_acumulado.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function readFileAsText(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+
+// ---- Vista acumulada con filtros ----
+sortKey = 'total';
+sortDir = -1;
+
+function formatMonthKey(monthKey){
+  if(!/^\d{4}-\d{2}$/.test(String(monthKey || ''))) return String(monthKey || '');
+  const [year, month] = monthKey.split('-').map(Number);
+  const d = new Date(year, month - 1, 1);
+  const label = d.toLocaleDateString('es-ES', {month:'long', year:'numeric'});
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function importMonths(imp){
+  if(Array.isArray(imp.months) && imp.months.length) return [...new Set(imp.months)].sort();
+  if(Array.isArray(imp.records)){
+    return [...new Set(imp.records.map(r => String(r.fecha || '').slice(0,7)).filter(m => /^\d{4}-\d{2}$/.test(m)))].sort();
+  }
+  return [];
+}
+
+function getAllMonths(){
+  const months = new Set();
+  imports.forEach(imp => importMonths(imp).forEach(m => months.add(m)));
+  return [...months].sort().reverse();
+}
+
+function getActiveFilters(){
+  return {
+    search: normalizeSearch(document.getElementById('searchInput')?.value || ''),
+    employee: document.getElementById('employeeFilter')?.value || '',
+    month: document.getElementById('monthFilter')?.value || '',
+    type: document.getElementById('typeFilter')?.value || 'ALL'
+  };
+}
+
+function buildTotalsForMonth(month){
+  const totals = {};
+  const add = (id, nombre, tipo, cantidad) => {
+    if(!totals[id]) totals[id] = {nombre:nombre || id, '7N':0,'7D':0,PERLI:0,PERCO:0,HFUN8:0};
+    totals[id].nombre = nombre || totals[id].nombre;
+    totals[id][tipo] += Number(cantidad || 0);
+  };
+
+  for(const imp of imports){
+    if(Array.isArray(imp.records)){
+      for(const r of imp.records){
+        if(month && String(r.fecha || '').slice(0,7) !== month) continue;
+        if(!CATS.includes(r.tipo)) continue;
+        add(String(r.id), r.nombre, r.tipo, r.cantidad);
+      }
+    }else if(!month && imp.totals){
+      for(const id in imp.totals){
+        const t = imp.totals[id];
+        CATS.forEach(cat => add(String(id), t.nombre, cat, t[cat]));
+      }
+    }
+  }
+  return totals;
+}
+
+function resolveSortFromControl(){
+  const value = document.getElementById('sortFilter')?.value || 'total-desc';
+  const selectedType = document.getElementById('typeFilter')?.value || 'ALL';
+  if(value === 'name-asc'){ sortKey = 'nombre'; sortDir = 1; }
+  else if(value === 'name-desc'){ sortKey = 'nombre'; sortDir = -1; }
+  else if(value === 'total-asc'){ sortKey = 'total'; sortDir = 1; }
+  else if(value === 'total-desc'){ sortKey = 'total'; sortDir = -1; }
+  else if(value === 'type-asc'){ sortKey = selectedType === 'ALL' ? 'total' : selectedType; sortDir = 1; }
+  else if(value === 'type-desc'){ sortKey = selectedType === 'ALL' ? 'total' : selectedType; sortDir = -1; }
+}
+
+function getViewRows(){
+  const f = getActiveFilters();
+  const totals = buildTotalsForMonth(f.month);
+  let rows = Object.entries(totals).map(([id,t]) => {
+    const perliRaw = Number(t.PERLI || 0);
+    const row = {
+      id, nombre:t.nombre,
+      '7N':Number(t['7N'] || 0),
+      '7D':Number(t['7D'] || 0),
+      PERLI_RAW:perliRaw,
+      PERLI:perliRaw,
+      PERLI_REAL:realAmount(perliRaw),
+      PERCO:Number(t.PERCO || 0),
+      HFUN8:Number(t.HFUN8 || 0)
+    };
+    row.total = row['7N'] + row['7D'] + row.PERLI + row.PERCO + row.HFUN8;
+    return row;
+  });
+
+  if(f.employee) rows = rows.filter(r => String(r.id) === String(f.employee));
+  if(f.search) rows = rows.filter(r => normalizeSearch(r.nombre).includes(f.search) || normalizeSearch(r.id).includes(f.search));
+  if(f.type !== 'ALL') rows = rows.filter(r => Number(r[f.type] || 0) > 0);
+
+  rows.sort((a,b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if(typeof va === 'string'){ va = normalizeSearch(va); vb = normalizeSearch(vb); }
+    if(va < vb) return -1 * sortDir;
+    if(va > vb) return 1 * sortDir;
+    return normalizeSearch(a.nombre).localeCompare(normalizeSearch(b.nombre), 'es');
+  });
+  return rows;
+}
+
+function getVisibleRecordCount(rows){
+  const f = getActiveFilters();
+  const ids = new Set(rows.map(r => String(r.id)));
+  let count = 0;
+  let legacyCount = 0;
+  for(const imp of imports){
+    if(Array.isArray(imp.records)){
+      for(const r of imp.records){
+        if(!ids.has(String(r.id))) continue;
+        if(f.month && String(r.fecha || '').slice(0,7) !== f.month) continue;
+        if(f.type !== 'ALL' && r.tipo !== f.type) continue;
+        count++;
+      }
+    }else if(!f.month && f.type === 'ALL' && !f.employee && !f.search){
+      legacyCount += Number(imp.recordCount || 0);
+    }
+  }
+  return count + legacyCount;
+}
+
+function renderFilterOptions(){
+  const monthEl = document.getElementById('monthFilter');
+  const employeeEl = document.getElementById('employeeFilter');
+  if(!monthEl || !employeeEl) return;
+
+  const oldMonth = monthEl.value;
+  const oldEmployee = employeeEl.value;
+  const months = getAllMonths();
+  monthEl.innerHTML = '<option value="">Todos los meses (acumulado)</option>' + months.map(m => `<option value="${m}">${escapeHtml(formatMonthKey(m))}</option>`).join('');
+  monthEl.value = months.includes(oldMonth) ? oldMonth : '';
+
+  const all = buildTotalsForMonth('');
+  const employees = Object.entries(all).map(([id,t]) => ({id,nombre:t.nombre})).sort((a,b) => a.nombre.localeCompare(b.nombre,'es',{sensitivity:'base'}));
+  employeeEl.innerHTML = '<option value="">Todos los empleados</option>' + employees.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.nombre)} · ${escapeHtml(e.id)}</option>`).join('');
+  employeeEl.value = employees.some(e => e.id === oldEmployee) ? oldEmployee : '';
+}
+
+function renderBoard(rowsArg){
+  const rows = rowsArg || getViewRows();
+  const sums = {'7N':0,'7D':0,PERLI:0,PERCO:0,HFUN8:0};
+  rows.forEach(r => CATS.forEach(c => sums[c] += Number(r[c] || 0)));
+  const total = CATS.reduce((sum,c) => sum + sums[c], 0);
+
+  document.getElementById('tot-7n').textContent = fmt(sums['7N']);
+  document.getElementById('tot-7d').textContent = fmt(sums['7D']);
+  document.getElementById('tot-perli').textContent = fmt(sums.PERLI);
+  document.getElementById('tot-perli-real').textContent = `Real ${fmt(realAmount(sums.PERLI))}`;
+  document.getElementById('tot-perco').textContent = fmt(sums.PERCO);
+  document.getElementById('tot-hfun').textContent = fmt(sums.HFUN8);
+  document.getElementById('foot-7n').textContent = fmt(sums['7N']);
+  document.getElementById('foot-7d').textContent = fmt(sums['7D']);
+  document.getElementById('foot-perli').textContent = fmt(sums.PERLI);
+  document.getElementById('foot-perli-real').textContent = `Real ${fmt(realAmount(sums.PERLI))}`;
+  document.getElementById('foot-perco').textContent = fmt(sums.PERCO);
+  document.getElementById('foot-hfun').textContent = fmt(sums.HFUN8);
+  document.getElementById('foot-total').textContent = fmt(total);
+
+  document.getElementById('meta-empleados').textContent = rows.length;
+  document.getElementById('meta-registros').textContent = getVisibleRecordCount(rows);
+  document.getElementById('meta-importaciones').textContent = imports.length;
+
+  const selectedType = getActiveFilters().type;
+  document.querySelectorAll('[data-board-cat]').forEach(cell => {
+    cell.classList.toggle('is-muted', selectedType !== 'ALL' && cell.getAttribute('data-board-cat') !== selectedType);
+  });
+}
+
+function renderHistory(){
+  const box = document.getElementById('historyList');
+  const resetRow = document.getElementById('resetRow');
+  if(imports.length === 0){
+    box.innerHTML = '<p class="empty-hint">Aún no has importado ningún archivo.</p>';
+    resetRow.style.display = 'none';
+    return;
+  }
+  resetRow.style.display = 'flex';
+  const sorted = [...imports].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  box.innerHTML = sorted.map(imp => {
+    const d = new Date(imp.timestamp);
+    const fecha = d.toLocaleDateString('es-ES') + ' ' + d.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+    const months = importMonths(imp);
+    const monthText = months.length ? months.map(formatMonthKey).join(' · ') : 'Mes no disponible';
+    const viewButton = months.length === 1 ? `<button class="history-view" data-view-month="${months[0]}">Ver mes</button>` : '';
+    return `<div class="history-item">
+      <div class="history-left">
+        <span class="history-name">${escapeHtml(imp.filename)}</span>
+        <span class="history-sub">${escapeHtml(monthText)} · ${fecha} · ${imp.recordCount} registros · ${imp.employeeCount} trabajadores</span>
+      </div>
+      <div class="history-actions">${viewButton}<button class="history-del" data-del="${imp.id}">Eliminar</button></div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => deleteImport(btn.getAttribute('data-del'))));
+  box.querySelectorAll('[data-view-month]').forEach(btn => btn.addEventListener('click', () => {
+    const month = btn.getAttribute('data-view-month');
+    document.getElementById('monthFilter').value = month;
+    renderView();
+    document.querySelector('.panel:last-of-type')?.scrollIntoView({behavior:'smooth', block:'start'});
+  }));
+}
+
+function applyVisibleType(){
+  const type = getActiveFilters().type;
+  document.querySelectorAll('[data-col-cat]').forEach(el => {
+    el.classList.toggle('hidden-col', type !== 'ALL' && el.getAttribute('data-col-cat') !== type);
+  });
+  document.querySelector('.table-scroll table')?.classList.toggle('type-focused', type !== 'ALL');
+}
+
+function renderTable(rowsArg){
+  const rows = rowsArg || getViewRows();
+  const f = getActiveFilters();
+  const visibleHours = rows.reduce((sum,r) => sum + (f.type === 'ALL' ? r.total : Number(r[f.type] || 0)), 0);
+  const monthLabel = f.month ? formatMonthKey(f.month) : 'Todos los meses';
+  const typeLabel = f.type === 'ALL' ? 'Todos los tipos' : CAT_LABELS[f.type];
+  document.getElementById('searchSummary').textContent = `${rows.length} ${rows.length === 1 ? 'empleado' : 'empleados'} · ${fmt(visibleHours)} h visibles`;
+
+  const notes = [];
+  if(f.month) notes.push(monthLabel);
+  if(f.employee){
+    const row = buildTotalsForMonth('')[f.employee];
+    notes.push(row ? row.nombre : f.employee);
+  }else if(f.search) notes.push(`Búsqueda: “${document.getElementById('searchInput').value.trim()}”`);
+  if(f.type !== 'ALL') notes.push(typeLabel);
+  if(realMode) notes.push('Real ×1,75 visible junto a Sector a librar');
+  const note = document.getElementById('activeViewNote');
+  note.textContent = notes.length ? `Vista filtrada: ${notes.join(' · ')}` : 'Vista acumulada de todos los meses, empleados y tipos.';
+  note.classList.toggle('show', notes.length > 0);
+
+  const body = document.getElementById('tableBody');
+  if(rows.length === 0){
+    body.innerHTML = '<tr><td colspan="8" class="empty-hint">No hay resultados con estos filtros.</td></tr>';
+    applyVisibleType();
+    return;
+  }
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td class="nombre" title="${escapeHtml(r.nombre)}">${escapeHtml(r.nombre)}</td>
+      <td class="idcell">${escapeHtml(r.id)}</td>
+      <td class="num" data-col-cat="7N">${detailButton(r['7N'], r.id, '7N', r['7N']>0?'cat-7n':'cat-zero')}</td>
+      <td class="num" data-col-cat="7D">${detailButton(r['7D'], r.id, '7D', r['7D']>0?'cat-7d':'cat-zero')}</td>
+      <td class="num" data-col-cat="PERLI">${perliCell(r.PERLI, r.PERLI_REAL, r.id)}</td>
+      <td class="num" data-col-cat="PERCO">${detailButton(r.PERCO, r.id, 'PERCO', r.PERCO>0?'cat-perco':'cat-zero')}</td>
+      <td class="num" data-col-cat="HFUN8">${detailButton(r.HFUN8, r.id, 'HFUN8', r.HFUN8>0?'cat-hfun':'cat-zero')}</td>
+      <td class="num total">${detailButton(r.total, r.id, 'ALL', 'total')}</td>
+    </tr>
+  `).join('');
+  applyVisibleType();
+}
+
+function getExpectedDetailTotal(employeeId, category){
+  const rows = getViewRows();
+  if(employeeId){
+    const row = rows.find(r => String(r.id) === String(employeeId));
+    if(!row) return 0;
+    return category === 'ALL' ? row.total : Number(row[category] || 0);
+  }
+  return rows.reduce((sum,row) => sum + (category === 'ALL' ? row.total : Number(row[category] || 0)), 0);
+}
+
+function collectDetail(employeeId, category){
+  const f = getActiveFilters();
+  const allowedIds = new Set(getViewRows().map(r => String(r.id)));
+  const grouped = new Map();
+  let detailedTotal = 0;
+
+  for(const imp of imports){
+    if(!Array.isArray(imp.records)) continue;
+    for(const r of imp.records){
+      if(!allowedIds.has(String(r.id))) continue;
+      if(employeeId && String(r.id) !== String(employeeId)) continue;
+      if(f.month && String(r.fecha || '').slice(0,7) !== f.month) continue;
+      if(category !== 'ALL' && r.tipo !== category) continue;
+
+      const raw = Number(r.cantidad || 0);
+      const key = employeeId
+        ? `${r.fecha}|${r.tipo}`
+        : `${r.id}|${r.fecha}|${r.tipo}`;
+      const current = grouped.get(key) || {
+        id:String(r.id), nombre:r.nombre, fecha:r.fecha, tipo:r.tipo, rawCantidad:0, cantidad:0, realCantidad:0
+      };
+      current.rawCantidad += raw;
+      current.cantidad += raw;
+      current.realCantidad += r.tipo === 'PERLI' ? realAmount(raw) : 0;
+      current.nombre = r.nombre || current.nombre;
+      grouped.set(key, current);
+      detailedTotal += raw;
+    }
+  }
+
+  const rows = [...grouped.values()].sort((a,b) =>
+    a.fecha.localeCompare(b.fecha) ||
+    normalizeSearch(a.nombre).localeCompare(normalizeSearch(b.nombre), 'es') ||
+    CATS.indexOf(a.tipo)-CATS.indexOf(b.tipo)
+  );
+  const expectedTotal = getExpectedDetailTotal(employeeId, category);
+  return {rows, expectedTotal, detailedTotal, legacyTotal:Math.max(0, expectedTotal-detailedTotal)};
+}
+
+function openDetail(employeeId, category){
+  const modal = document.getElementById('detailModal');
+  const all = buildTotalsForMonth('');
+  const employee = employeeId && all[employeeId] ? all[employeeId].nombre : '';
+  const categoryName = category === 'ALL' ? 'Total general' : CAT_LABELS[category];
+  const detail = collectDetail(employeeId, category);
+  const uniqueDays = new Set(detail.rows.map(r => r.fecha)).size;
+  const month = getActiveFilters().month;
+  const showEmployee = !employeeId;
+  const showReal = realMode && (category === 'PERLI' || category === 'ALL');
+
+  document.getElementById('detailTitle').textContent = employee ? `${categoryName} · ${employee}` : `${categoryName} · empleados de la vista`;
+  document.getElementById('detailSub').textContent = `${fmt(detail.expectedTotal)} horas originales · ${uniqueDays} ${uniqueDays === 1 ? 'día' : 'días'}${month ? ` · ${formatMonthKey(month)}` : ''}`;
+
+  let html = '';
+  if(showReal){
+    html += `<div class="real-detail-note"><b>Real visible:</b> se mantiene la hora original y, al lado, se muestra únicamente para Sector a librar su resultado ×${String(REAL_MULTIPLIER).replace('.', ',')}.</div>`;
+  }
+  if(detail.legacyTotal > 0.001){
+    html += `<div class="detail-note">${fmt(detail.legacyTotal)} horas proceden de importaciones antiguas sin fechas detalladas. Para ver esos días, elimina esa importación y vuelve a cargarla.</div>`;
+  }
+  if(detail.rows.length === 0){
+    html += '<div class="detail-empty">No hay fechas detalladas disponibles para este número con los filtros actuales.</div>';
+  }else{
+    const classes = ['detail-list'];
+    if(showEmployee) classes.push('has-employee');
+    if(showReal) classes.push('has-real');
+    html += `<div class="${classes.join(' ')}">`;
+    html += '<div class="detail-row detail-head"><span>Día</span>';
+    if(showEmployee) html += '<span>Empleado</span>';
+    html += '<span>Concepto</span><span class="detail-hours">Horas</span>';
+    if(showReal) html += '<span class="detail-real">Real</span>';
+    html += '</div>';
+
+    html += detail.rows.map(r => {
+      let row = `<div class="detail-row"><span class="detail-date">${escapeHtml(formatDay(r.fecha))}</span>`;
+      if(showEmployee) row += `<span class="detail-employee" title="${escapeHtml(r.nombre)}">${escapeHtml(r.nombre)}</span>`;
+      row += `<span class="detail-cat">${escapeHtml(CAT_LABELS[r.tipo] || r.tipo)}</span>`;
+      row += `<span class="detail-hours">${fmt(r.rawCantidad)}</span>`;
+      if(showReal) row += `<span class="detail-real">${r.tipo === 'PERLI' ? fmt(r.realCantidad) : '—'}</span>`;
+      row += '</div>';
+      return row;
+    }).join('');
+    html += '</div>';
+  }
+  document.getElementById('detailBody').innerHTML = html;
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden','false');
+  document.body.classList.add('modal-open');
+  document.getElementById('detailClose').focus();
+}
+
+function renderView(){
+  syncRealControls();
+  resolveSortFromControl();
+  const rows = getViewRows();
+  renderBoard(rows);
+  renderTable(rows);
+}
+
+function renderAll(){
+  renderFilterOptions();
+  renderHistory();
+  renderView();
+}
+
+function exportBackupCSV(){
+  if(imports.length === 0){
+    showStatus('No hay importaciones para exportar.', 'err');
+    return;
+  }
+  const header = ['Formato','Versión','ImportID','Archivo','FechaImportacion','Fecha','Tipo','Cantidad','ID empleado','Nombre'];
+  const rows = [];
+
+  for(const imp of imports){
+    const sourceId = String(imp.originKey || imp.id || ('imp_' + Date.now()));
+    if(Array.isArray(imp.records) && imp.records.length){
+      for(const r of imp.records){
+        rows.push(['PERENTORIAS_BACKUP','1',sourceId,imp.filename || '',imp.timestamp || '',r.fecha || '',r.tipo || '',String(Number(r.cantidad || 0)).replace('.', ','),String(r.id || ''),r.nombre || '']);
+      }
+    }else if(imp.totals){
+      for(const id in imp.totals){
+        const t = imp.totals[id];
+        for(const cat of CATS){
+          const amount = Number(t[cat] || 0);
+          if(amount <= 0) continue;
+          rows.push(['PERENTORIAS_BACKUP','1',sourceId,imp.filename || '',imp.timestamp || '','',cat,String(amount).replace('.', ','),String(id),t.nombre || '']);
+        }
+      }
+    }
+  }
+
+  const csv = [header,...rows].map(row => row.map(csvCell).join(';')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `perentorias_copia_completa_${date}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  showStatus(`Copia CSV creada con ${imports.length} importaciones y ${rows.length} registros. Puedes cargarla en otro dispositivo y se acumulará sin duplicar las importaciones ya reconocidas.`, 'ok');
+}
+
+function exportCSV(){
+  const rows = getViewRows();
+  const f = getActiveFilters();
+  let header, data;
+  if(f.type === 'ALL'){
+    if(realMode){
+      header = ['Nombre','ID','A librar','A cobrar','Sector a librar','Real Sector a librar (×1,75)','Sector a cobrar','HFUN','Total general'];
+      data = rows.map(r => [r.nombre,r.id,fmt(r['7N']),fmt(r['7D']),fmt(r.PERLI),fmt(r.PERLI_REAL),fmt(r.PERCO),fmt(r.HFUN8),fmt(r.total)]);
+    }else{
+      header = ['Nombre','ID','A librar','A cobrar','Sector a librar','Sector a cobrar','HFUN','Total general'];
+      data = rows.map(r => [r.nombre,r.id,fmt(r['7N']),fmt(r['7D']),fmt(r.PERLI),fmt(r.PERCO),fmt(r.HFUN8),fmt(r.total)]);
+    }
+  }else if(f.type === 'PERLI' && realMode){
+    header = ['Nombre','ID','Sector a librar','Real (×1,75)','Total general'];
+    data = rows.map(r => [r.nombre,r.id,fmt(r.PERLI),fmt(r.PERLI_REAL),fmt(r.total)]);
+  }else{
+    header = ['Nombre','ID',CAT_LABELS[f.type],'Total general'];
+    data = rows.map(r => [r.nombre,r.id,fmt(r[f.type]),fmt(r.total)]);
+  }
+  const csv = [header,...data].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const suffix = [f.month || 'acumulado', f.type === 'ALL' ? 'todos' : f.type, realMode ? 'real' : 'normal'].join('_');
+  a.href = url;
+  a.download = `perentorias_${suffix}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function clearFilters(){
+  document.getElementById('searchInput').value = '';
+  document.getElementById('employeeFilter').value = '';
+  document.getElementById('monthFilter').value = '';
+  document.getElementById('typeFilter').value = 'ALL';
+  document.getElementById('sortFilter').value = 'total-desc';
+  sortKey = 'total'; sortDir = -1;
+  renderView();
+}
+
+// ---- Wire up events ----
+document.getElementById('drop').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('drop').addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.classList.add('drag'); });
+document.getElementById('drop').addEventListener('dragleave', e => { e.currentTarget.classList.remove('drag'); });
+document.getElementById('drop').addEventListener('drop', async e => {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if(!file) return;
+  await handleFileInput(file);
+});
+document.getElementById('fileInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  await handleFileInput(file);
+  e.target.value = '';
+});
+
+async function handleFileInput(file){
+  if(/\.pdf$/i.test(file.name)){
+    showStatus('Este archivo es un PDF. Ábrelo, copia el texto de la tabla y pégalo en el cuadro de texto de abajo — la lectura automática de PDF no es fiable con este formato tabular.', 'err');
+    return;
+  }
+  try{
+    const text = await readFileAsText(file);
+    if(/\.csv$/i.test(file.name)){
+      await importCSV(text, file.name);
+    }else{
+      await doImport(text, file.name);
+    }
+  }catch(e){
+    console.error(e);
+    showStatus('No se pudo leer o interpretar el archivo. Comprueba que sea un CSV exportado por esta página o un TXT válido.', 'err');
+  }
+}
+
+document.getElementById('btnImportar').addEventListener('click', async () => {
+  const text = document.getElementById('pasteArea').value;
+  if(!text.trim()){
+    showStatus('Pega o selecciona primero el contenido a importar.', 'err');
+    return;
+  }
+  await doImport(text, 'Texto pegado ' + new Date().toLocaleDateString('es-ES'));
+  document.getElementById('pasteArea').value = '';
+});
+
+document.getElementById('btnLimpiarArea').addEventListener('click', () => {
+  document.getElementById('pasteArea').value = '';
+  hideStatus();
+});
+
+document.getElementById('btnReset').addEventListener('click', resetAll);
+document.getElementById('btnExportBackup').addEventListener('click', exportBackupCSV);
+document.getElementById('btnExport').addEventListener('click', exportCSV);
+document.getElementById('searchInput').addEventListener('input', () => {
+  document.getElementById('employeeFilter').value = '';
+  renderView();
+});
+document.getElementById('employeeFilter').addEventListener('change', () => {
+  document.getElementById('searchInput').value = '';
+  renderView();
+});
+document.getElementById('monthFilter').addEventListener('change', renderView);
+document.getElementById('typeFilter').addEventListener('change', () => {
+  if(['type-desc','type-asc'].includes(document.getElementById('sortFilter').value)) resolveSortFromControl();
+  renderView();
+});
+document.getElementById('sortFilter').addEventListener('change', renderView);
+document.getElementById('btnClearFilters').addEventListener('click', clearFilters);
+
+document.querySelectorAll('[data-real-toggle]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRealMode(!realMode);
+  });
+  btn.addEventListener('keydown', e => e.stopPropagation());
+});
+
+document.getElementById('tableBody').addEventListener('click', e => {
+  const btn = e.target.closest('[data-detail-id][data-detail-cat]');
+  if(!btn) return;
+  openDetail(btn.getAttribute('data-detail-id'), btn.getAttribute('data-detail-cat'));
+});
+
+document.querySelectorAll('[data-board-cat]').forEach(cell => {
+  const open = () => openDetail(null, cell.getAttribute('data-board-cat'));
+  cell.addEventListener('click', open);
+  cell.addEventListener('keydown', e => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(); }
+  });
+});
+
+document.getElementById('detailClose').addEventListener('click', closeDetail);
+document.getElementById('detailModal').addEventListener('click', e => {
+  if(e.target.id === 'detailModal') closeDetail();
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && document.getElementById('detailModal').classList.contains('show')) closeDetail();
+});
+
+document.querySelectorAll('thead th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.getAttribute('data-sort');
+    if(sortKey === key){ sortDir *= -1; } else { sortKey = key; sortDir = key === 'nombre' ? 1 : -1; }
+    const custom = document.querySelector('#sortFilter option[value="custom"]');
+    if(custom){
+      const label = key === 'nombre' ? 'Nombre' : (key === 'total' ? 'Total general' : (CAT_LABELS[key] || key));
+      custom.textContent = `Orden por ${label} ${sortDir === -1 ? '↓' : '↑'}`;
+      document.getElementById('sortFilter').value = 'custom';
+    }
+    renderView();
+  });
+});
+
+// ---- Init ----
+(async function init(){
+  await loadImports();
+  renderAll();
+})();
+</script>
+</body>
+</html>
