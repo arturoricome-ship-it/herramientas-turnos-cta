@@ -24,6 +24,7 @@
 <!-- HERRAMIENTAS_GENERADOR_RAPIDO_PROTEGIDO_V1_2026-07-28 -->
 <!-- HERRAMIENTAS_GENERADOR_DOS_MODOS_CSV_VALIDADO_V3_2026-07-28 -->
 <!-- HERRAMIENTAS_GENERADOR_TRES_MODOS_CSV_VALIDADO_V4_2026-07-28 -->
+<!-- COPIA_COMPLETA_CUOTA_SEGURA_ALMACEN_EXTENDIDO_V2_2026-07-30 -->
 <!DOCTYPE html>
 <!-- HERRAMIENTAS_FESTIVO_USADO_SIN_UNIDADES_V121_2026-07-20 -->
 <!-- NOMINAS_EMPLEADOS_V111_TOTALES_SOLO_RELLENADOS_TIEMPO_REAL_AUTOMATICOS_OCULTOS_2026-07-20 -->
@@ -282,7 +283,7 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
     <button class="full-backup-btn" type="button" onclick="FullBackup.exportAll()">⬇️ Exportar copia completa</button>
     <button class="full-backup-btn restore" type="button">⬆️ Importar copia completa<input type="file" accept=".json,application/json" onchange="FullBackup.importAll(this.files[0]);this.value=''" aria-label="Importar copia completa"></button>
    </div>
-   <div id="fullBackupStatus" class="full-backup-status">La copia se guarda en un único archivo JSON. No borra los datos de origen.</div>
+   <div id="fullBackupStatus" class="full-backup-status">La copia se guarda en un único archivo JSON. Al importar, los datos grandes pasan automáticamente a un almacén ampliado para evitar el límite del navegador.</div>
   </div>
 
   <div class="tools">
@@ -428,18 +429,66 @@ window.HerramientasHub={
 /* ===== Fin base común ===== */
 
 
-/* ===== Copia completa portable: localStorage + IndexedDB ===== */
+/* ===== Copia completa portable V2: cuota segura + almacén extendido IndexedDB ===== */
 (function(){
- function st(msg,err){var e=document.getElementById('fullBackupStatus');if(e){e.textContent=msg;e.style.color=err?'#fecaca':'#bbf7d0';}}
+ var EXT_DB='herramientas_almacen_extendido_v1',EXT_STORE='kv';
  function reqP(req){return new Promise(function(resolve,reject){req.onsuccess=function(){resolve(req.result)};req.onerror=function(){reject(req.error||new Error('Error IndexedDB'))}})}
  function txDone(tx){return new Promise(function(resolve,reject){tx.oncomplete=function(){resolve()};tx.onerror=tx.onabort=function(){reject(tx.error||new Error('Error en transacción'))}})}
+ function isToolKey(k){k=String(k||'');return k.indexOf('herramientas_')===0||k.indexOf('cta_')===0||k.indexOf('perentorias:')===0||k.indexOf('nominas_')===0||k.indexOf('op_')===0||k==='avisos_seen';}
+ function compactProfileRaw(raw){
+  try{
+   var src=JSON.parse(String(raw||'')),out={version:1,profiles:{},updatedAt:src&&src.updatedAt||''};
+   if(!src||!src.profiles||typeof src.profiles!=='object')return JSON.stringify(out);
+   var seen={};
+   Object.keys(src.profiles).forEach(function(id){
+    var p=src.profiles[id]||{},cfg={},pay=String(p.payroll||'').replace(/\D/g,'').replace(/^0+/,''),name=String(p.name||'').trim(),dedupe=pay?('p:'+pay):('n:'+name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase());
+    Object.keys(p.config||{}).forEach(function(k){var v=p.config[k];if(v===null||typeof v==='string'||typeof v==='number'||typeof v==='boolean')cfg[k]=v;});
+    var clean={id:String(p.id||id),name:name,payroll:String(p.payroll||''),config:cfg,createdAt:String(p.createdAt||''),updatedAt:String(p.updatedAt||''),lastSource:String(p.lastSource||'')};
+    if(!dedupe||!seen[dedupe]){out.profiles[clean.id]=clean;if(dedupe)seen[dedupe]=clean.id;}
+    else{
+     var prev=out.profiles[seen[dedupe]];
+     if(prev){Object.keys(clean.config).forEach(function(k){prev.config[k]=clean.config[k];});if(clean.name)prev.name=clean.name;if(clean.payroll)prev.payroll=clean.payroll;if(clean.updatedAt>prev.updatedAt)prev.updatedAt=clean.updatedAt;}
+    }
+   });
+   return JSON.stringify(out);
+  }catch(e){return JSON.stringify({version:1,profiles:{},updatedAt:''});}
+ }
+ function normalizeEntry(k,v){
+  v=String(v==null?'':v);
+  if(k==='herramientas_solo_independiente_v2:perfiles_laborales_compartidos:v1')v=compactProfileRaw(v);
+  return v;
+ }
+ function openExtDb(){
+  return new Promise(function(resolve,reject){var r=indexedDB.open(EXT_DB,1);r.onupgradeneeded=function(){var db=r.result;if(!db.objectStoreNames.contains(EXT_STORE))db.createObjectStore(EXT_STORE,{keyPath:'key'});};r.onsuccess=function(){resolve(r.result)};r.onerror=function(){reject(r.error||new Error('No se pudo abrir el almacén extendido'))};});
+ }
+ var ExtendedToolStorage=(function(){
+  var cache=Object.create(null),loaded=false,dbPromise=null;
+  function db(){if(!dbPromise)dbPromise=openExtDb();return dbPromise;}
+  async function init(){try{var d=await db(),tx=d.transaction(EXT_STORE,'readonly'),rows=await reqP(tx.objectStore(EXT_STORE).getAll());rows.forEach(function(r){if(r&&r.key!=null)cache[String(r.key)]=String(r.value==null?'':r.value);});await txDone(tx);}catch(e){console.warn('[Almacén extendido]',e);}loaded=true;return true;}
+  function get(k){k=String(k);return Object.prototype.hasOwnProperty.call(cache,k)?cache[k]:null;}
+  async function set(k,v){k=String(k);v=String(v);cache[k]=v;try{var d=await db(),tx=d.transaction(EXT_STORE,'readwrite');tx.objectStore(EXT_STORE).put({key:k,value:v,updatedAt:new Date().toISOString()});await txDone(tx);}catch(e){console.warn('[Almacén extendido: guardar]',e);}return true;}
+  async function remove(k){k=String(k);delete cache[k];try{var d=await db(),tx=d.transaction(EXT_STORE,'readwrite');tx.objectStore(EXT_STORE).delete(k);await txDone(tx);}catch(e){}return true;}
+  async function clearTools(){var keys=Object.keys(cache).filter(isToolKey);keys.forEach(function(k){delete cache[k]});try{var d=await db(),tx=d.transaction(EXT_STORE,'readwrite'),os=tx.objectStore(EXT_STORE);keys.forEach(function(k){os.delete(k)});await txDone(tx);}catch(e){}return true;}
+  function exportObject(){var o={};Object.keys(cache).filter(isToolKey).forEach(function(k){o[k]=normalizeEntry(k,cache[k])});return o;}
+  var api={get:get,set:set,remove:remove,clearTools:clearTools,exportObject:exportObject,isReady:function(){return loaded;}};api.ready=init();return api;
+ })();
+ window.ExtendedToolStorage=ExtendedToolStorage;
+ window.__isHerramientasToolKey=isToolKey;
+
+ window.injectExtendedStorageBridge=function(html){
+  var bridge='<script>(function(){if(window.__TOOLS_EXT_STORAGE_PATCHED__)return;window.__TOOLS_EXT_STORAGE_PATCHED__=true;var P=Storage.prototype,G=P.getItem,S=P.setItem,R=P.removeItem,C=P.clear;function L(x){try{return x===window.localStorage}catch(e){return false}}function E(){try{return parent&&parent!==window&&parent.ExtendedToolStorage?parent.ExtendedToolStorage:null}catch(e){return null}}function def(n,f){try{Object.defineProperty(P,n,{value:f,writable:true,configurable:true})}catch(e){try{P[n]=f}catch(_e){}}}def("getItem",function(k){var v=G.call(this,k);if(v!==null||!L(this))return v;var e=E();return e?e.get(String(k)):null});def("setItem",function(k,v){if(!L(this))return S.call(this,k,v);k=String(k);v=String(v);var e=E();try{S.call(this,k,v);if(e)e.remove(k);return}catch(err){try{R.call(this,k)}catch(_r){}if(e){e.set(k,v);return}throw err}});def("removeItem",function(k){var r=R.call(this,k);if(L(this)){var e=E();if(e)e.remove(String(k))}return r});def("clear",function(){var r=C.call(this);if(L(this)){var e=E();if(e)e.clearTools()}return r});})();<\/script>';
+  return String(html||'').indexOf('<head>')>=0?String(html).replace('<head>','<head>'+bridge):bridge+String(html||'');
+ };
+
+ function st(msg,err){var e=document.getElementById('fullBackupStatus');if(e){e.textContent=msg;e.style.color=err?'#fecaca':'#bbf7d0';}}
+ function bytesToB64(value){var u=value instanceof Uint8Array?value:new Uint8Array(value),parts=[],step=0x8000;for(var i=0;i<u.length;i+=step)parts.push(String.fromCharCode.apply(null,u.subarray(i,Math.min(i+step,u.length))));return btoa(parts.join(''));}
  async function enc(v){
   if(v===null||typeof v==='string'||typeof v==='number'||typeof v==='boolean')return v;
   if(typeof v==='undefined')return{__hbType:'Undefined'};
   if(v instanceof Date)return{__hbType:'Date',value:v.toISOString()};
-  if(v instanceof ArrayBuffer)return{__hbType:'ArrayBuffer',value:btoa(String.fromCharCode.apply(null,new Uint8Array(v)))};
-  if(ArrayBuffer.isView(v)){var u=new Uint8Array(v.buffer,v.byteOffset,v.byteLength);return{__hbType:'TypedArray',ctor:v.constructor.name,value:btoa(String.fromCharCode.apply(null,u))};}
-  if(typeof Blob!=='undefined'&&v instanceof Blob){var ab=await v.arrayBuffer();return{__hbType:v instanceof File?'File':'Blob',name:v.name||'',type:v.type||'',lastModified:v.lastModified||0,value:btoa(String.fromCharCode.apply(null,new Uint8Array(ab)))};}
+  if(v instanceof ArrayBuffer)return{__hbType:'ArrayBuffer',value:bytesToB64(v)};
+  if(ArrayBuffer.isView(v)){var u=new Uint8Array(v.buffer,v.byteOffset,v.byteLength);return{__hbType:'TypedArray',ctor:v.constructor.name,value:bytesToB64(u)};}
+  if(typeof Blob!=='undefined'&&v instanceof Blob){var ab=await v.arrayBuffer();return{__hbType:v instanceof File?'File':'Blob',name:v.name||'',type:v.type||'',lastModified:v.lastModified||0,value:bytesToB64(ab)};}
   if(Array.isArray(v)){var a=[];for(var i=0;i<v.length;i++)a.push(await enc(v[i]));return a;}
   if(typeof v==='object'){var o={};for(var k of Object.keys(v))o[k]=await enc(v[k]);return o;}
   return String(v);
@@ -456,25 +505,56 @@ window.HerramientasHub={
   var o={};Object.keys(v).forEach(function(k){o[k]=dec(v[k])});return o;
  }
  async function dbNames(){
-  var names=['herramientas_importaciones_compartidas_v1','cta_herramientas_solo_independiente_v2'];
-  try{if(indexedDB.databases){var ds=await indexedDB.databases();ds.forEach(function(d){if(d&&d.name&&names.indexOf(d.name)<0)names.push(d.name)})}}catch(e){}
+  var names=['herramientas_importaciones_compartidas_v1','cta_herramientas_solo_independiente_v2','herramientas_nominas_grupo_independiente_v3'];
+  try{if(indexedDB.databases){var ds=await indexedDB.databases();ds.forEach(function(d){if(d&&d.name&&d.name!==EXT_DB&&names.indexOf(d.name)<0)names.push(d.name)})}}catch(e){}
   return names;
  }
  async function dumpDb(name){
   return new Promise(function(resolve){var r=indexedDB.open(name);r.onerror=function(){resolve(null)};r.onsuccess=async function(){var db=r.result,stores={};try{for(var sn of Array.from(db.objectStoreNames)){var tx=db.transaction(sn,'readonly'),os=tx.objectStore(sn),keys=await reqP(os.getAllKeys()),vals=await reqP(os.getAll()),arr=[];for(var i=0;i<vals.length;i++)arr.push({key:await enc(keys[i]),value:await enc(vals[i])});stores[sn]={keyPath:os.keyPath,autoIncrement:os.autoIncrement,records:arr};await txDone(tx)}resolve({name:name,version:db.version,stores:stores})}catch(e){resolve({name:name,error:String(e)})}finally{db.close()}}})
  }
  async function exportAll(){
-  try{st('Preparando copia completa…');var ls={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);ls[k]=localStorage.getItem(k)}var dbs=[];for(var n of await dbNames()){var d=await dumpDb(n);if(d&&d.stores&&Object.keys(d.stores).length)dbs.push(d)}var pack={format:'herramientas-backup-completo',version:1,createdAt:new Date().toISOString(),origin:location.origin,localStorage:ls,indexedDB:dbs};var blob=new Blob([JSON.stringify(pack)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='copia_completa_herramientas_'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000);st('✅ Copia completa exportada: '+Object.keys(ls).length+' datos locales y '+dbs.length+' bases de archivos.')}catch(e){st('Error al exportar: '+(e.message||e),true)}}
+  try{
+   st('Preparando copia completa…');await ExtendedToolStorage.ready;
+   var ls={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(isToolKey(k))ls[k]=normalizeEntry(k,localStorage.getItem(k));}
+   var overflow=ExtendedToolStorage.exportObject();Object.keys(ls).forEach(function(k){delete overflow[k]});
+   var dbs=[];for(var n of await dbNames()){var d=await dumpDb(n);if(d&&d.stores&&Object.keys(d.stores).length)dbs.push(d)}
+   var pack={format:'herramientas-backup-completo',version:2,createdAt:new Date().toISOString(),origin:location.origin,localStorage:ls,overflow:overflow,indexedDB:dbs};
+   var blob=new Blob([JSON.stringify(pack)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='copia_completa_herramientas_'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000);
+   st('✅ Copia completa exportada: '+(Object.keys(ls).length+Object.keys(overflow).length)+' datos y '+dbs.length+' bases de archivos.');
+  }catch(e){st('Error al exportar: '+(e.message||e),true)}
+ }
  async function restoreDb(spec){
-  if(!spec||!spec.name||!spec.stores)return;
+  if(!spec||!spec.name||!spec.stores||spec.name===EXT_DB)return;
   await new Promise(function(resolve){var del=indexedDB.deleteDatabase(spec.name);del.onsuccess=del.onerror=del.onblocked=function(){resolve()}});
-  await new Promise(function(resolve,reject){var r=indexedDB.open(spec.name,spec.version||1);r.onupgradeneeded=function(){var db=r.result;Object.keys(spec.stores).forEach(function(sn){var d=spec.stores[sn],opts={};if(d.keyPath!==null&&typeof d.keyPath!=='undefined')opts.keyPath=d.keyPath;if(d.autoIncrement)opts.autoIncrement=true;db.createObjectStore(sn,opts)})};r.onerror=function(){reject(r.error)};r.onsuccess=async function(){var db=r.result;try{for(var sn of Object.keys(spec.stores)){var d=spec.stores[sn],tx=db.transaction(sn,'readwrite'),os=tx.objectStore(sn);for(var rec of d.records||[]){var val=dec(rec.value),key=dec(rec.key);if(os.keyPath!==null)os.put(val);else os.put(val,key)}await txDone(tx)}db.close();resolve()}catch(e){db.close();reject(e)}}})
+  await new Promise(function(resolve,reject){var r=indexedDB.open(spec.name,spec.version||1);r.onupgradeneeded=function(){var db=r.result;Object.keys(spec.stores).forEach(function(sn){var d=spec.stores[sn],opts={};if(d.keyPath!==null&&typeof d.keyPath!=='undefined')opts.keyPath=d.keyPath;if(d.autoIncrement)opts.autoIncrement=true;if(!db.objectStoreNames.contains(sn))db.createObjectStore(sn,opts)})};r.onerror=function(){reject(r.error)};r.onsuccess=async function(){var db=r.result;try{for(var sn of Object.keys(spec.stores)){if(!db.objectStoreNames.contains(sn))continue;var d=spec.stores[sn],tx=db.transaction(sn,'readwrite'),os=tx.objectStore(sn);for(var rec of d.records||[]){var val=dec(rec.value),key=dec(rec.key);if(os.keyPath!==null)os.put(val);else os.put(val,key)}await txDone(tx)}db.close();resolve()}catch(e){db.close();reject(e)}}})
+ }
+ function incomingEntries(data){
+  var all={};Object.keys(data.localStorage||{}).forEach(function(k){if(isToolKey(k))all[k]=normalizeEntry(k,data.localStorage[k])});Object.keys(data.overflow||{}).forEach(function(k){if(isToolKey(k)&&all[k]===undefined)all[k]=normalizeEntry(k,data.overflow[k])});return all;
+ }
+ async function clearCurrentToolData(incoming){
+  await ExtendedToolStorage.ready;await ExtendedToolStorage.clearTools();
+  var keys=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(isToolKey(k)||Object.prototype.hasOwnProperty.call(incoming,k))keys.push(k)}keys.forEach(function(k){try{localStorage.removeItem(k)}catch(e){}});
  }
  async function importAll(file){
-  if(!file)return;try{st('Leyendo copia completa…');var data=JSON.parse(await file.text());if(!data||data.format!=='herramientas-backup-completo')throw new Error('El archivo no es una copia completa válida');if(!confirm('Se restaurarán todos los datos de la web en este navegador. Los datos actuales con las mismas claves serán sustituidos. ¿Continuar?')){st('Importación cancelada.');return}Object.keys(data.localStorage||{}).forEach(function(k){localStorage.setItem(k,String(data.localStorage[k]))});for(var d of data.indexedDB||[])await restoreDb(d);st('✅ Copia restaurada. Recargando la web…');setTimeout(function(){location.reload()},900)}catch(e){st('Error al importar: '+(e.message||e),true)}}
+  if(!file)return;
+  try{
+   st('Leyendo copia completa…');var data=JSON.parse(await file.text());if(!data||data.format!=='herramientas-backup-completo')throw new Error('El archivo no es una copia completa válida');
+   if(!confirm('Se restaurarán todos los datos de las herramientas en este navegador. Los datos actuales de la web serán sustituidos. ¿Continuar?')){st('Importación cancelada.');return}
+   var entries=incomingEntries(data);await clearCurrentToolData(entries);
+   for(var d of data.indexedDB||[])await restoreDb(d);
+   var nativeCount=0,extendedCount=0,keys=Object.keys(entries).sort(function(a,b){return entries[b].length-entries[a].length});
+   for(var i=0;i<keys.length;i++){
+    var k=keys[i],v=entries[k];
+    try{localStorage.setItem(k,v);nativeCount++;}
+    catch(e){await ExtendedToolStorage.set(k,v);extendedCount++;}
+   }
+   st('✅ Copia restaurada: '+nativeCount+' datos locales'+(extendedCount?' y '+extendedCount+' guardados en el almacén ampliado':'')+'. Recargando…');
+   setTimeout(function(){location.reload()},1200);
+  }catch(e){st('Error al importar: '+(e.message||e),true)}
+ }
  window.FullBackup={exportAll:exportAll,importAll:importAll};
 })();
-/* ===== Fin copia completa ===== */
+/* ===== Fin copia completa V2 ===== */
 
 function setJsonImportStatus(text,type){
  var el=id('jsonImportStatus');
@@ -579,7 +659,7 @@ function setFrameHtml(html,onload){
   setTimeout(notifySharedFrame,180);
  };
  f.removeAttribute('src');
- f.srcdoc=html;
+ f.srcdoc=(typeof injectExtendedStorageBridge==='function'?injectExtendedStorageBridge(html):html);
 }
 function setFrameUrl(url,onload){
  var f=id('frame');motorReady=false;f.name=mode;f.onload=onload||function(){id('loading').style.display='none'};
@@ -587,6 +667,7 @@ function setFrameUrl(url,onload){
  f.src=url;
 }
 function openTool(tool,title){
+ if(window.ExtendedToolStorage&&!ExtendedToolStorage.isReady()){ExtendedToolStorage.ready.then(function(){openTool(tool,title)});return;}
  clearTimeout(pendingTimer);pendingAttempts=0;pending=tool;motorReady=false;
  id('viewerTitle').textContent=title;id('viewerSub').textContent=(tool==='payroll'||tool==='payrollgroup')?'Memoria de nóminas completamente independiente de CTA':'Memoria personal independiente';
  id('viewer').classList.add('show');document.body.style.overflow='hidden';id('loading').style.display='flex';
