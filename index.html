@@ -1,3 +1,4 @@
+<!-- HERRAMIENTAS_COPIA_COMPLETA_PORTABLE_V1_2026-07-30 -->
 <!-- HERRAMIENTAS_NOCTURNIDAD_COMPLETA_2300_A_0359_V2_2026-07-30 -->
 <!-- HERRAMIENTAS_REGLAS_SECTOR_COLORES_NOCTURNIDAD_V1_2026-07-30 -->
 <!-- HERRAMIENTAS_ATRASOS_PDF_CASILLAS_AUTOMATICAS_Y_MANUALES_V1_2026-07-30 -->
@@ -243,6 +244,15 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
 .toast{position:fixed;left:14px;right:14px;bottom:18px;z-index:2000;display:none;background:#271b20;border:1px solid rgba(248,113,113,.4);color:#fecaca;border-radius:12px;padding:11px 13px;font-size:11px}.toast.show{display:block}
 @media(max-width:520px){.mode-grid{grid-template-columns:1fr}.mode-btn{min-height:125px}}
 @media(max-width:370px){.tools{grid-template-columns:1fr}.tool.turnos{grid-column:auto}}
+
+.full-backup{margin:0 0 14px;padding:13px;border-radius:14px;border:1px solid rgba(96,165,250,.28);background:linear-gradient(135deg,rgba(96,165,250,.09),rgba(255,255,255,.025))}
+.full-backup-title{font-size:13px;font-weight:900;color:var(--white)}
+.full-backup-desc{margin-top:4px;font-size:10px;line-height:1.45;color:var(--muted)}
+.full-backup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.full-backup-btn{padding:11px 10px;border-radius:11px;border:1px solid rgba(96,165,250,.38);background:rgba(96,165,250,.12);color:#bfdbfe;font-size:11px;font-weight:900;cursor:pointer;position:relative;overflow:hidden}
+.full-backup-btn.restore{border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.1);color:#bbf7d0}
+.full-backup-btn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.full-backup-status{margin-top:8px;font-size:10px;line-height:1.4;color:var(--muted)}
 </style>
 <!-- HERRAMIENTAS_NOMINAS_ATRASOS_VISIBLES_V103_2026-07-19 -->
 <!-- V112_TOTALES_PDF_TIEMPO_REAL_2026-07-20 -->
@@ -262,6 +272,17 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
    <input id="sharedExcelInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" multiple hidden onchange="HerramientasHub.handlePicker(this.files,'excel');this.value=''">
    <input id="sharedPdfInput" type="file" accept=".pdf,application/pdf" multiple hidden onchange="HerramientasHub.handlePicker(this.files,'pdf');this.value=''">
    <div id="sharedImportStatus" class="shared-import-status">Los Excel se compartirán con Analizador, Horas plantilla, Comprobar nóminas y Nóminas de grupo. Los PDF se validan en Comprobar nóminas y después aparecen también en Nóminas de grupo.</div>
+  </div>
+
+
+  <div class="full-backup">
+   <div class="full-backup-title">💾 Copia completa de toda la web</div>
+   <div class="full-backup-desc">Guarda y restaura de una vez empleados, perfiles, calendarios, comprobaciones, Excel, PDF, Analizador, Horas plantilla, Nóminas de grupo y Perentorias. Sirve para pasar los datos de la descarga a GitHub.</div>
+   <div class="full-backup-actions">
+    <button class="full-backup-btn" type="button" onclick="FullBackup.exportAll()">⬇️ Exportar copia completa</button>
+    <button class="full-backup-btn restore" type="button">⬆️ Importar copia completa<input type="file" accept=".json,application/json" onchange="FullBackup.importAll(this.files[0]);this.value=''" aria-label="Importar copia completa"></button>
+   </div>
+   <div id="fullBackupStatus" class="full-backup-status">La copia se guarda en un único archivo JSON. No borra los datos de origen.</div>
   </div>
 
   <div class="tools">
@@ -405,6 +426,55 @@ window.HerramientasHub={
  status:sharedStatus
 };
 /* ===== Fin base común ===== */
+
+
+/* ===== Copia completa portable: localStorage + IndexedDB ===== */
+(function(){
+ function st(msg,err){var e=document.getElementById('fullBackupStatus');if(e){e.textContent=msg;e.style.color=err?'#fecaca':'#bbf7d0';}}
+ function reqP(req){return new Promise(function(resolve,reject){req.onsuccess=function(){resolve(req.result)};req.onerror=function(){reject(req.error||new Error('Error IndexedDB'))}})}
+ function txDone(tx){return new Promise(function(resolve,reject){tx.oncomplete=function(){resolve()};tx.onerror=tx.onabort=function(){reject(tx.error||new Error('Error en transacción'))}})}
+ async function enc(v){
+  if(v===null||typeof v==='string'||typeof v==='number'||typeof v==='boolean')return v;
+  if(typeof v==='undefined')return{__hbType:'Undefined'};
+  if(v instanceof Date)return{__hbType:'Date',value:v.toISOString()};
+  if(v instanceof ArrayBuffer)return{__hbType:'ArrayBuffer',value:btoa(String.fromCharCode.apply(null,new Uint8Array(v)))};
+  if(ArrayBuffer.isView(v)){var u=new Uint8Array(v.buffer,v.byteOffset,v.byteLength);return{__hbType:'TypedArray',ctor:v.constructor.name,value:btoa(String.fromCharCode.apply(null,u))};}
+  if(typeof Blob!=='undefined'&&v instanceof Blob){var ab=await v.arrayBuffer();return{__hbType:v instanceof File?'File':'Blob',name:v.name||'',type:v.type||'',lastModified:v.lastModified||0,value:btoa(String.fromCharCode.apply(null,new Uint8Array(ab)))};}
+  if(Array.isArray(v)){var a=[];for(var i=0;i<v.length;i++)a.push(await enc(v[i]));return a;}
+  if(typeof v==='object'){var o={};for(var k of Object.keys(v))o[k]=await enc(v[k]);return o;}
+  return String(v);
+ }
+ function b64ab(s){var bin=atob(s||''),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer}
+ function dec(v){
+  if(!v||typeof v!=='object')return v;
+  if(v.__hbType==='Undefined')return undefined;
+  if(v.__hbType==='Date')return new Date(v.value);
+  if(v.__hbType==='ArrayBuffer')return b64ab(v.value);
+  if(v.__hbType==='TypedArray'){var ab=b64ab(v.value),C=window[v.ctor]||Uint8Array;try{return new C(ab)}catch(e){return new Uint8Array(ab)}}
+  if(v.__hbType==='Blob'||v.__hbType==='File'){var ab2=b64ab(v.value);return v.__hbType==='File'?new File([ab2],v.name||'archivo',{type:v.type||'',lastModified:v.lastModified||Date.now()}):new Blob([ab2],{type:v.type||''});}
+  if(Array.isArray(v))return v.map(dec);
+  var o={};Object.keys(v).forEach(function(k){o[k]=dec(v[k])});return o;
+ }
+ async function dbNames(){
+  var names=['herramientas_importaciones_compartidas_v1','cta_herramientas_solo_independiente_v2'];
+  try{if(indexedDB.databases){var ds=await indexedDB.databases();ds.forEach(function(d){if(d&&d.name&&names.indexOf(d.name)<0)names.push(d.name)})}}catch(e){}
+  return names;
+ }
+ async function dumpDb(name){
+  return new Promise(function(resolve){var r=indexedDB.open(name);r.onerror=function(){resolve(null)};r.onsuccess=async function(){var db=r.result,stores={};try{for(var sn of Array.from(db.objectStoreNames)){var tx=db.transaction(sn,'readonly'),os=tx.objectStore(sn),keys=await reqP(os.getAllKeys()),vals=await reqP(os.getAll()),arr=[];for(var i=0;i<vals.length;i++)arr.push({key:await enc(keys[i]),value:await enc(vals[i])});stores[sn]={keyPath:os.keyPath,autoIncrement:os.autoIncrement,records:arr};await txDone(tx)}resolve({name:name,version:db.version,stores:stores})}catch(e){resolve({name:name,error:String(e)})}finally{db.close()}}})
+ }
+ async function exportAll(){
+  try{st('Preparando copia completa…');var ls={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);ls[k]=localStorage.getItem(k)}var dbs=[];for(var n of await dbNames()){var d=await dumpDb(n);if(d&&d.stores&&Object.keys(d.stores).length)dbs.push(d)}var pack={format:'herramientas-backup-completo',version:1,createdAt:new Date().toISOString(),origin:location.origin,localStorage:ls,indexedDB:dbs};var blob=new Blob([JSON.stringify(pack)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='copia_completa_herramientas_'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000);st('✅ Copia completa exportada: '+Object.keys(ls).length+' datos locales y '+dbs.length+' bases de archivos.')}catch(e){st('Error al exportar: '+(e.message||e),true)}}
+ async function restoreDb(spec){
+  if(!spec||!spec.name||!spec.stores)return;
+  await new Promise(function(resolve){var del=indexedDB.deleteDatabase(spec.name);del.onsuccess=del.onerror=del.onblocked=function(){resolve()}});
+  await new Promise(function(resolve,reject){var r=indexedDB.open(spec.name,spec.version||1);r.onupgradeneeded=function(){var db=r.result;Object.keys(spec.stores).forEach(function(sn){var d=spec.stores[sn],opts={};if(d.keyPath!==null&&typeof d.keyPath!=='undefined')opts.keyPath=d.keyPath;if(d.autoIncrement)opts.autoIncrement=true;db.createObjectStore(sn,opts)})};r.onerror=function(){reject(r.error)};r.onsuccess=async function(){var db=r.result;try{for(var sn of Object.keys(spec.stores)){var d=spec.stores[sn],tx=db.transaction(sn,'readwrite'),os=tx.objectStore(sn);for(var rec of d.records||[]){var val=dec(rec.value),key=dec(rec.key);if(os.keyPath!==null)os.put(val);else os.put(val,key)}await txDone(tx)}db.close();resolve()}catch(e){db.close();reject(e)}}})
+ }
+ async function importAll(file){
+  if(!file)return;try{st('Leyendo copia completa…');var data=JSON.parse(await file.text());if(!data||data.format!=='herramientas-backup-completo')throw new Error('El archivo no es una copia completa válida');if(!confirm('Se restaurarán todos los datos de la web en este navegador. Los datos actuales con las mismas claves serán sustituidos. ¿Continuar?')){st('Importación cancelada.');return}Object.keys(data.localStorage||{}).forEach(function(k){localStorage.setItem(k,String(data.localStorage[k]))});for(var d of data.indexedDB||[])await restoreDb(d);st('✅ Copia restaurada. Recargando la web…');setTimeout(function(){location.reload()},900)}catch(e){st('Error al importar: '+(e.message||e),true)}}
+ window.FullBackup={exportAll:exportAll,importAll:importAll};
+})();
+/* ===== Fin copia completa ===== */
 
 function setJsonImportStatus(text,type){
  var el=id('jsonImportStatus');
