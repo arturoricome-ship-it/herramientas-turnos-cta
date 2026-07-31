@@ -876,8 +876,7 @@ window.FirebaseTest={
     try{
       setStatus("Abriendo acceso de Google…","");
       await setPersistence(auth,browserLocalPersistence);
-      if(isMobile()) await signInWithRedirect(auth,provider);
-      else await signInWithPopup(auth,provider);
+      await signInWithPopup(auth,provider);
     }catch(err){
       console.error(err);
       setStatus("No se pudo iniciar sesión: "+(err.code||err.message||err),"error");
@@ -1060,7 +1059,6 @@ window.FirebaseTest={
   }
 };
 try{ await setPersistence(auth,browserLocalPersistence); }catch(e){ console.warn(e); }
-try{ await getRedirectResult(auth); }catch(err){ console.error(err); setStatus("Error al volver de Google: "+(err.code||err.message||err),"error"); }
 onAuthStateChanged(auth,updateUi);
 </script>
 
@@ -1068,7 +1066,7 @@ onAuthStateChanged(auth,updateUi);
 (function(){
   if('serviceWorker' in navigator){
     window.addEventListener('load',function(){
-      navigator.serviceWorker.register('./sw.js?v=70',{updateViaCache:'none'}).then(function(reg){
+      navigator.serviceWorker.register('./sw.js?v=71',{updateViaCache:'none'}).then(function(reg){
         try{reg.update();}catch(e){}
       }).catch(function(err){console.warn('No se pudo registrar la web app:',err);});
     });
@@ -1076,6 +1074,7 @@ onAuthStateChanged(auth,updateUi);
 })();
 </script>
 
+<!-- FIREBASE_AUTH_POPUP_TODOS_DISPOSITIVOS_GITHUB_PAGES_V1_2026-07-31 -->
 </body>
 </html>
 <!-- INDEX_V107_VACACIONES_BAJA_RECACLULO_REAL_2026-07-19 -->
