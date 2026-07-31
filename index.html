@@ -273,7 +273,7 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
 <!-- HERRAMIENTAS_NOMINAS_ATRASOS_VISIBLES_V103_2026-07-19 -->
 <!-- V112_TOTALES_PDF_TIEMPO_REAL_2026-07-20 -->
 <!-- PRIORIDAD_INDIVIDUAL_Y_BUSCADOR_EMPLEADO_V125_2026-07-20 -->
-<!-- FIREBASE_SUBIDA_INICIAL_PERFILES_V1_2026-07-31 -->
+<!-- FIREBASE_PERFILES_SUBIR_DESCARGAR_V2_2026-07-31 -->
 </head>
 <body>
 <div class="app">
@@ -282,14 +282,15 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
 
   <div class="firebase-panel" id="firebasePanel">
    <div class="firebase-panel-title"><span>☁️ Sincronización online — fase 1</span><span id="firebaseBadge" class="firebase-badge">Sin conectar</span></div>
-   <div class="firebase-panel-desc">Primera subida desde este PC: empleados y perfiles laborales. Todavía no sube calendarios, nóminas, Excel ni PDF.</div>
+   <div class="firebase-panel-desc">Sube los perfiles desde el PC principal y descárgalos en los demás dispositivos. Todavía no sincroniza calendarios, nóminas, Excel ni PDF.</div>
    <div class="firebase-actions">
     <button id="firebaseLoginBtn" class="firebase-btn" type="button" onclick="FirebaseTest.login()">Iniciar sesión con Google</button>
     <button id="firebaseUploadProfilesBtn" class="firebase-btn secondary" type="button" onclick="FirebaseTest.subirPerfiles()" disabled>Subir perfiles del PC</button>
+    <button id="firebaseDownloadProfilesBtn" class="firebase-btn secondary" type="button" onclick="FirebaseTest.descargarPerfiles()" disabled>Descargar perfiles de Firebase</button>
     <button id="firebaseLogoutBtn" class="firebase-btn danger" type="button" onclick="FirebaseTest.logout()" hidden>Cerrar sesión</button>
    </div>
    <div id="firebaseUser" class="firebase-user"></div>
-   <div id="firebaseStatus" class="firebase-status">Inicia sesión y pulsa «Subir perfiles del PC» cuando hayas revisado los empleados.</div>
+   <div id="firebaseStatus" class="firebase-status">Inicia sesión. En el PC principal usa «Subir» y en el móvil usa «Descargar».</div>
   </div>
 
   <div class="shared-import">
@@ -859,12 +860,13 @@ function setStatus(text, type){
 }
 function updateUi(user){
   currentUser=user||null;
-  const login=byId("firebaseLoginBtn"), upload=byId("firebaseUploadProfilesBtn"), logout=byId("firebaseLogoutBtn"), userEl=byId("firebaseUser");
+  const login=byId("firebaseLoginBtn"), upload=byId("firebaseUploadProfilesBtn"), download=byId("firebaseDownloadProfilesBtn"), logout=byId("firebaseLogoutBtn"), userEl=byId("firebaseUser");
   if(login) login.hidden=!!user;
   if(upload) upload.disabled=!user;
+  if(download) download.disabled=!user;
   if(logout) logout.hidden=!user;
   if(userEl) userEl.textContent=user?("Cuenta: "+(user.email||user.displayName||user.uid)):"";
-  if(user) setStatus("Sesión iniciada. Ya puedes subir los perfiles de este PC.","ok");
+  if(user) setStatus("Sesión iniciada. Puedes subir los perfiles del PC o descargarlos en otro dispositivo.","ok");
   else setStatus("Sin sesión. Inicia sesión con tu cuenta de Google.","");
 }
 function isMobile(){ return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||""); }
@@ -971,6 +973,78 @@ window.FirebaseTest={
     }catch(err){
       console.error(err);
       setStatus("No se pudieron subir los perfiles: "+(err.code||err.message||err),"error");
+    }finally{ if(btn) btn.disabled=!currentUser; }
+  },
+  async descargarPerfiles(){
+    if(!currentUser){ setStatus("Primero inicia sesión.","error"); return; }
+    const btn=byId("firebaseDownloadProfilesBtn");
+    if(btn) btn.disabled=true;
+    try{
+      setStatus("Descargando perfiles desde Firebase…","");
+      if(window.ExtendedToolStorage&&window.ExtendedToolStorage.ready) await window.ExtendedToolStorage.ready;
+      const snap=await getDocs(collection(db,"users",currentUser.uid,"employeeProfiles"));
+      if(snap.empty) throw new Error("No hay perfiles guardados en Firebase.");
+
+      const key="herramientas_solo_independiente_v2:perfiles_laborales_compartidos:v1";
+      let localRoot={version:1,profiles:{},updatedAt:""};
+      let rawLocal=null;
+      try{ rawLocal=localStorage.getItem(key); }catch(e){}
+      if(!rawLocal){ try{ rawLocal=window.ExtendedToolStorage&&window.ExtendedToolStorage.get(key); }catch(e){} }
+      if(rawLocal){
+        try{
+          const parsed=JSON.parse(rawLocal);
+          if(parsed&&parsed.profiles&&typeof parsed.profiles==="object") localRoot=parsed;
+        }catch(e){}
+      }
+      if(!localRoot.profiles||typeof localRoot.profiles!=="object") localRoot.profiles={};
+
+      function cleanText(v){return String(v==null?"":v).trim();}
+      function norm(v){return cleanText(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim();}
+      function payrollKey(v){return cleanText(v).replace(/\D/g,"").replace(/^0+/,"");}
+      function identity(p){const pay=payrollKey(p&&p.payroll);if(pay)return "p:"+pay;const n=norm(p&&p.name);return n?"n:"+n:"";}
+      function cleanConfig(cfg){const out={};Object.keys(cfg||{}).forEach(k=>{const v=cfg[k];if(v===null||["string","number","boolean"].includes(typeof v))out[k]=v;});return out;}
+
+      const profiles=localRoot.profiles;
+      const idByIdentity={};
+      Object.keys(profiles).forEach(id=>{const ident=identity(profiles[id]);if(ident&&!idByIdentity[ident])idByIdentity[ident]=id;});
+      let downloaded=0,updated=0,created=0;
+      snap.forEach(ds=>{
+        const p=ds.data()||{};
+        const ident=identity(p);
+        let targetId=(ident&&idByIdentity[ident])||cleanText(p.localId)||cleanText(p.cloudId)||ds.id;
+        if(!targetId) targetId=ds.id;
+        const prev=profiles[targetId]||{};
+        const cfg=Object.assign({},cleanConfig(prev.config),cleanConfig(p.config));
+        profiles[targetId]={
+          id:targetId,
+          name:cleanText(p.name)||cleanText(prev.name),
+          payroll:cleanText(p.payroll)||cleanText(prev.payroll),
+          config:cfg,
+          createdAt:cleanText(prev.createdAt)||cleanText(p.createdAt)||new Date().toISOString(),
+          updatedAt:cleanText(p.updatedAt)||new Date().toISOString(),
+          lastSource:"firebase"
+        };
+        if(ident) idByIdentity[ident]=targetId;
+        downloaded++;
+        if(Object.keys(prev).length) updated++; else created++;
+      });
+      localRoot.version=1;
+      localRoot.updatedAt=new Date().toISOString();
+      const raw=JSON.stringify(localRoot);
+      let savedLocal=false;
+      try{ localStorage.setItem(key,raw); savedLocal=true; }catch(e){ try{localStorage.removeItem(key);}catch(_e){} }
+      if(savedLocal){
+        try{ if(window.ExtendedToolStorage) await window.ExtendedToolStorage.remove(key); }catch(e){}
+      }else{
+        if(!window.ExtendedToolStorage) throw new Error("No hay espacio local para guardar los perfiles.");
+        await window.ExtendedToolStorage.set(key,raw);
+      }
+      try{ window.dispatchEvent(new CustomEvent("herramientas-perfiles-actualizados",{detail:{count:downloaded}})); }catch(e){}
+      setStatus("✅ Descarga correcta: "+downloaded+" perfiles recibidos ("+created+" nuevos y "+updated+" actualizados). La página se recargará.","ok");
+      setTimeout(()=>location.reload(),1400);
+    }catch(err){
+      console.error(err);
+      setStatus("No se pudieron descargar los perfiles: "+(err.code||err.message||err),"error");
     }finally{ if(btn) btn.disabled=!currentUser; }
   },
   async probar(){
