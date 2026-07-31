@@ -1038,9 +1038,63 @@ window.FirebaseTest={
         if(!window.ExtendedToolStorage) throw new Error("No hay espacio local para guardar los perfiles.");
         await window.ExtendedToolStorage.set(key,raw);
       }
+      // Crear o actualizar también los registros visibles de Comprobar nóminas.
+      // Los perfiles compartidos guardan la configuración, pero Comprobar nóminas
+      // solo muestra empleados que existen en su estado propio.
+      const payrollStateKey="herramientas_solo_independiente_v2:nominas_empleados:indexB:v1";
+      let payrollRaw=null;
+      try{ payrollRaw=localStorage.getItem(payrollStateKey); }catch(e){}
+      if(!payrollRaw){ try{ payrollRaw=window.ExtendedToolStorage&&window.ExtendedToolStorage.get(payrollStateKey); }catch(e){} }
+      let payrollState={version:1,employees:{},activeId:"",updatedAt:""};
+      if(payrollRaw){
+        try{
+          const parsed=JSON.parse(payrollRaw);
+          if(parsed&&parsed.employees&&typeof parsed.employees==="object") payrollState=parsed;
+        }catch(e){}
+      }
+      if(!payrollState.employees||typeof payrollState.employees!=="object") payrollState.employees={};
+      const employeeIdByIdentity={};
+      Object.keys(payrollState.employees).forEach(id=>{
+        const emp=payrollState.employees[id]||{};
+        const ident=identity(emp);
+        if(ident&&!employeeIdByIdentity[ident]) employeeIdByIdentity[ident]=id;
+      });
+      let payrollCreated=0,payrollUpdated=0;
+      Object.keys(profiles).forEach(profileId=>{
+        const p=profiles[profileId]||{};
+        const ident=identity(p);
+        let employeeId=(ident&&employeeIdByIdentity[ident])||"";
+        let emp=employeeId?payrollState.employees[employeeId]:null;
+        if(!emp){
+          employeeId="emp_firebase_"+cleanText(profileId).replace(/[^A-Za-z0-9_-]+/g,"_");
+          let baseId=employeeId,n=2;
+          while(payrollState.employees[employeeId]) employeeId=baseId+"_"+(n++);
+          emp={id:employeeId,name:"",payroll:"",config:{},years:{}};
+          payrollState.employees[employeeId]=emp;
+          payrollCreated++;
+        }else payrollUpdated++;
+        emp.id=employeeId;
+        emp.name=cleanText(p.name)||cleanText(emp.name);
+        emp.payroll=cleanText(p.payroll)||cleanText(emp.payroll);
+        emp.sharedProfileId=cleanText(p.id)||profileId;
+        emp.config=Object.assign({},emp.config||{},cleanConfig(p.config));
+        emp.years=emp.years&&typeof emp.years==="object"?emp.years:{};
+        if(ident) employeeIdByIdentity[ident]=employeeId;
+      });
+      if(!payrollState.activeId||!payrollState.employees[payrollState.activeId]) payrollState.activeId=Object.keys(payrollState.employees)[0]||"";
+      payrollState.updatedAt=new Date().toISOString();
+      const payrollStateRaw=JSON.stringify(payrollState);
+      let payrollSavedLocal=false;
+      try{ localStorage.setItem(payrollStateKey,payrollStateRaw); payrollSavedLocal=true; }catch(e){ try{localStorage.removeItem(payrollStateKey);}catch(_e){} }
+      if(payrollSavedLocal){
+        try{ if(window.ExtendedToolStorage) await window.ExtendedToolStorage.remove(payrollStateKey); }catch(e){}
+      }else{
+        if(!window.ExtendedToolStorage) throw new Error("No hay espacio local para crear los empleados de Comprobar nóminas.");
+        await window.ExtendedToolStorage.set(payrollStateKey,payrollStateRaw);
+      }
       try{ window.dispatchEvent(new CustomEvent("herramientas-perfiles-actualizados",{detail:{count:downloaded}})); }catch(e){}
-      setStatus("✅ Descarga correcta: "+downloaded+" perfiles recibidos ("+created+" nuevos y "+updated+" actualizados). La página se recargará.","ok");
-      setTimeout(()=>location.reload(),1400);
+      setStatus("✅ Descarga correcta: "+downloaded+" perfiles recibidos. Comprobar nóminas: "+payrollCreated+" empleados creados y "+payrollUpdated+" actualizados. La página se recargará.","ok");
+      setTimeout(()=>location.reload(),1600);
     }catch(err){
       console.error(err);
       setStatus("No se pudieron descargar los perfiles: "+(err.code||err.message||err),"error");
@@ -1066,7 +1120,7 @@ onAuthStateChanged(auth,updateUi);
 (function(){
   if('serviceWorker' in navigator){
     window.addEventListener('load',function(){
-      navigator.serviceWorker.register('./sw.js?v=71',{updateViaCache:'none'}).then(function(reg){
+      navigator.serviceWorker.register('./sw.js?v=72',{updateViaCache:'none'}).then(function(reg){
         try{reg.update();}catch(e){}
       }).catch(function(err){console.warn('No se pudo registrar la web app:',err);});
     });
