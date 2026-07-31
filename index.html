@@ -273,6 +273,7 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
 <!-- HERRAMIENTAS_NOMINAS_ATRASOS_VISIBLES_V103_2026-07-19 -->
 <!-- V112_TOTALES_PDF_TIEMPO_REAL_2026-07-20 -->
 <!-- PRIORIDAD_INDIVIDUAL_Y_BUSCADOR_EMPLEADO_V125_2026-07-20 -->
+<!-- FIREBASE_SUBIDA_INICIAL_PERFILES_V1_2026-07-31 -->
 </head>
 <body>
 <div class="app">
@@ -280,15 +281,15 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
  <section class="screen active" id="toolsScreen">
 
   <div class="firebase-panel" id="firebasePanel">
-   <div class="firebase-panel-title"><span>☁️ Sincronización online — prueba</span><span id="firebaseBadge" class="firebase-badge">Sin conectar</span></div>
-   <div class="firebase-panel-desc">Primero comprobaremos el acceso con Google y una escritura privada en Firestore. En esta versión todavía no se sincronizan nóminas ni calendarios.</div>
+   <div class="firebase-panel-title"><span>☁️ Sincronización online — fase 1</span><span id="firebaseBadge" class="firebase-badge">Sin conectar</span></div>
+   <div class="firebase-panel-desc">Primera subida desde este PC: empleados y perfiles laborales. Todavía no sube calendarios, nóminas, Excel ni PDF.</div>
    <div class="firebase-actions">
     <button id="firebaseLoginBtn" class="firebase-btn" type="button" onclick="FirebaseTest.login()">Iniciar sesión con Google</button>
-    <button id="firebaseTestBtn" class="firebase-btn secondary" type="button" onclick="FirebaseTest.probar()" disabled>Probar Firestore</button>
+    <button id="firebaseUploadProfilesBtn" class="firebase-btn secondary" type="button" onclick="FirebaseTest.subirPerfiles()" disabled>Subir perfiles del PC</button>
     <button id="firebaseLogoutBtn" class="firebase-btn danger" type="button" onclick="FirebaseTest.logout()" hidden>Cerrar sesión</button>
    </div>
    <div id="firebaseUser" class="firebase-user"></div>
-   <div id="firebaseStatus" class="firebase-status">Sube este index a GitHub Pages y abre tu web habitual para hacer la prueba.</div>
+   <div id="firebaseStatus" class="firebase-status">Inicia sesión y pulsa «Subir perfiles del PC» cuando hayas revisado los empleados.</div>
   </div>
 
   <div class="shared-import">
@@ -828,7 +829,7 @@ window.addEventListener('keydown',function(e){if(e.key==='Escape'&&id('viewer').
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, serverTimestamp, collection, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDt6PJIWERXoZNmYCOekpsoIRuzXfmpPrU",
@@ -858,12 +859,12 @@ function setStatus(text, type){
 }
 function updateUi(user){
   currentUser=user||null;
-  const login=byId("firebaseLoginBtn"), test=byId("firebaseTestBtn"), logout=byId("firebaseLogoutBtn"), userEl=byId("firebaseUser");
+  const login=byId("firebaseLoginBtn"), upload=byId("firebaseUploadProfilesBtn"), logout=byId("firebaseLogoutBtn"), userEl=byId("firebaseUser");
   if(login) login.hidden=!!user;
-  if(test) test.disabled=!user;
+  if(upload) upload.disabled=!user;
   if(logout) logout.hidden=!user;
   if(userEl) userEl.textContent=user?("Cuenta: "+(user.email||user.displayName||user.uid)):"";
-  if(user) setStatus("Sesión iniciada. Pulsa «Probar Firestore».","ok");
+  if(user) setStatus("Sesión iniciada. Ya puedes subir los perfiles de este PC.","ok");
   else setStatus("Sin sesión. Inicia sesión con tu cuenta de Google.","");
 }
 function isMobile(){ return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||""); }
@@ -880,31 +881,110 @@ window.FirebaseTest={
       setStatus("No se pudo iniciar sesión: "+(err.code||err.message||err),"error");
     }
   },
-  async probar(){
+  async subirPerfiles(){
     if(!currentUser){ setStatus("Primero inicia sesión.","error"); return; }
-    const btn=byId("firebaseTestBtn");
+    const btn=byId("firebaseUploadProfilesBtn");
     if(btn) btn.disabled=true;
     try{
-      setStatus("Escribiendo una prueba privada en Firestore…","");
-      await setDoc(doc(db,"users",currentUser.uid,"meta","conexion"),{
-        ok:true,
-        email:currentUser.email||"",
-        origen:location.origin,
-        ruta:location.pathname,
-        actualizado:serverTimestamp()
+      setStatus("Leyendo empleados y perfiles guardados en este PC…","");
+      if(window.ExtendedToolStorage&&window.ExtendedToolStorage.ready) await window.ExtendedToolStorage.ready;
+      const key="herramientas_solo_independiente_v2:perfiles_laborales_compartidos:v1";
+      let candidates=[];
+      try{ const v=localStorage.getItem(key); if(v)candidates.push(v); }catch(e){}
+      try{ const v=window.ExtendedToolStorage&&window.ExtendedToolStorage.get(key); if(v)candidates.push(v); }catch(e){}
+      try{
+        for(let i=0;i<localStorage.length;i++){
+          const k=localStorage.key(i);
+          if(k&&k.includes("perfiles_laborales_compartidos")){
+            const v=localStorage.getItem(k); if(v)candidates.push(v);
+          }
+        }
+      }catch(e){}
+      try{
+        const ext=window.ExtendedToolStorage&&window.ExtendedToolStorage.exportObject?window.ExtendedToolStorage.exportObject():{};
+        Object.keys(ext||{}).forEach(k=>{if(k.includes("perfiles_laborales_compartidos")&&ext[k])candidates.push(ext[k]);});
+      }catch(e){}
+
+      let source=null, profiles=[];
+      for(const raw of candidates){
+        try{
+          const parsed=JSON.parse(raw);
+          const list=parsed&&parsed.profiles&&typeof parsed.profiles==="object"?Object.values(parsed.profiles):[];
+          if(list.length>profiles.length){ source=parsed; profiles=list; }
+        }catch(e){}
+      }
+      if(!profiles.length) throw new Error("No se han encontrado perfiles laborales guardados en este navegador.");
+
+      function cleanText(v){return String(v==null?"":v).trim();}
+      function norm(v){return cleanText(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim();}
+      function payrollKey(v){return cleanText(v).replace(/\D/g,"").replace(/^0+/,"");}
+      function hashText(v){let h=2166136261;for(let i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36);}
+      function docId(p){const pay=payrollKey(p.payroll);if(pay)return "nomina_"+pay;const n=norm(p.name)||cleanText(p.id)||"empleado";return "nombre_"+hashText(n);}
+      function cleanConfig(cfg){const out={};Object.keys(cfg||{}).forEach(k=>{const v=cfg[k];if(v===null||["string","number","boolean"].includes(typeof v))out[k]=v;});return out;}
+
+      const deduped=new Map();
+      profiles.forEach(p=>{
+        p=p||{};const id=docId(p),prev=deduped.get(id);
+        const clean={
+          localId:cleanText(p.id),
+          name:cleanText(p.name),
+          payroll:cleanText(p.payroll),
+          config:cleanConfig(p.config),
+          createdAt:cleanText(p.createdAt),
+          updatedAt:cleanText(p.updatedAt),
+          lastSource:cleanText(p.lastSource)
+        };
+        if(!prev) deduped.set(id,clean);
+        else{
+          clean.config=Object.assign({},prev.config||{},clean.config||{});
+          clean.name=clean.name||prev.name;clean.payroll=clean.payroll||prev.payroll;
+          clean.createdAt=clean.createdAt||prev.createdAt;
+          if((prev.updatedAt||"")>(clean.updatedAt||"")) clean.updatedAt=prev.updatedAt;
+          clean.lastSource=clean.lastSource||prev.lastSource;
+          deduped.set(id,clean);
+        }
+      });
+
+      const entries=Array.from(deduped.entries());
+      setStatus("Subiendo "+entries.length+" perfiles a Firebase…","");
+      for(let pos=0;pos<entries.length;pos+=400){
+        const batch=writeBatch(db);
+        entries.slice(pos,pos+400).forEach(([id,p])=>{
+          batch.set(doc(db,"users",currentUser.uid,"employeeProfiles",id),Object.assign({},p,{
+            cloudId:id,
+            ownerUid:currentUser.uid,
+            uploadedFrom:location.origin+location.pathname,
+            cloudUpdatedAt:serverTimestamp()
+          }),{merge:true});
+        });
+        await batch.commit();
+      }
+      await setDoc(doc(db,"users",currentUser.uid,"syncStatus","profiles"),{
+        phase:1,
+        profileCount:entries.length,
+        sourceUpdatedAt:source&&source.updatedAt||"",
+        uploadedFrom:location.origin+location.pathname,
+        uploadedAt:serverTimestamp()
       },{merge:true});
-      setStatus("Prueba correcta: Google y Firestore están conectados.","ok");
+      const cloudSnap=await getDocs(collection(db,"users",currentUser.uid,"employeeProfiles"));
+      setStatus("✅ Subida correcta: "+entries.length+" perfiles enviados y "+cloudSnap.size+" perfiles encontrados en Firebase.","ok");
     }catch(err){
       console.error(err);
-      setStatus("Falló Firestore: "+(err.code||err.message||err),"error");
-    }finally{ if(btn) btn.disabled=false; }
+      setStatus("No se pudieron subir los perfiles: "+(err.code||err.message||err),"error");
+    }finally{ if(btn) btn.disabled=!currentUser; }
+  },
+  async probar(){
+    if(!currentUser){ setStatus("Primero inicia sesión.","error"); return; }
+    try{
+      await setDoc(doc(db,"users",currentUser.uid,"meta","conexion"),{ok:true,actualizado:serverTimestamp()},{merge:true});
+      setStatus("Prueba correcta: Google y Firestore están conectados.","ok");
+    }catch(err){ setStatus("Falló Firestore: "+(err.code||err.message||err),"error"); }
   },
   async logout(){
     try{ await signOut(auth); }
     catch(err){ setStatus("No se pudo cerrar sesión: "+(err.code||err.message||err),"error"); }
   }
 };
-
 try{ await setPersistence(auth,browserLocalPersistence); }catch(e){ console.warn(e); }
 try{ await getRedirectResult(auth); }catch(err){ console.error(err); setStatus("Error al volver de Google: "+(err.code||err.message||err),"error"); }
 onAuthStateChanged(auth,updateUi);
