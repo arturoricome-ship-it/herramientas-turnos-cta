@@ -1,3 +1,4 @@
+<!-- FIREBASE_SINCRONIZACION_AUTOMATICA_DATOS_EXTRAIDOS_V1_2026-07-31 -->
 <!-- FIREBASE_PRUEBA_CONEXION_AUTH_FIRESTORE_V1_2026-07-31 -->
 <!-- HERRAMIENTAS_COPIA_COMPLETA_PORTABLE_V1_2026-07-30 -->
 <!-- HERRAMIENTAS_NOCTURNIDAD_COMPLETA_2300_A_0359_V2_2026-07-30 -->
@@ -281,16 +282,15 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
  <section class="screen active" id="toolsScreen">
 
   <div class="firebase-panel" id="firebasePanel">
-   <div class="firebase-panel-title"><span>☁️ Sincronización online — fase 1</span><span id="firebaseBadge" class="firebase-badge">Sin conectar</span></div>
-   <div class="firebase-panel-desc">Sube los perfiles desde el PC principal y descárgalos en los demás dispositivos. Todavía no sincroniza calendarios, nóminas, Excel ni PDF.</div>
+   <div class="firebase-panel-title"><span>☁️ Sincronización online automática</span><span id="firebaseBadge" class="firebase-badge">Sin conectar</span></div>
+   <div class="firebase-panel-desc">Sincroniza automáticamente perfiles, calendarios, Comprobar nóminas, atrasos, Nóminas de grupo, Analizador y Horas plantilla. Los Excel y PDF originales se conectarán en la siguiente fase con Cloud Storage.</div>
    <div class="firebase-actions">
     <button id="firebaseLoginBtn" class="firebase-btn" type="button" onclick="FirebaseTest.login()">Iniciar sesión con Google</button>
-    <button id="firebaseUploadProfilesBtn" class="firebase-btn secondary" type="button" onclick="FirebaseTest.subirPerfiles()" disabled>Subir perfiles del PC</button>
-    <button id="firebaseDownloadProfilesBtn" class="firebase-btn secondary" type="button" onclick="FirebaseTest.descargarPerfiles()" disabled>Descargar perfiles de Firebase</button>
+    <button id="firebaseInitializeBtn" class="firebase-btn secondary" type="button" onclick="FirebaseTest.initializeFromDevice()" hidden>Usar este dispositivo como origen inicial</button>
     <button id="firebaseLogoutBtn" class="firebase-btn danger" type="button" onclick="FirebaseTest.logout()" hidden>Cerrar sesión</button>
    </div>
    <div id="firebaseUser" class="firebase-user"></div>
-   <div id="firebaseStatus" class="firebase-status">Inicia sesión. En el PC principal usa «Subir» y en el móvil usa «Descargar».</div>
+   <div id="firebaseStatus" class="firebase-status">Inicia sesión con la misma cuenta de Google en todos tus dispositivos.</div>
   </div>
 
   <div class="shared-import">
@@ -305,15 +305,15 @@ h1{font:30px "Bebas Neue",sans-serif;letter-spacing:1.2px;line-height:1;margin:0
   </div>
 
 
-  <div class="full-backup">
-   <div class="full-backup-title">💾 Copia completa de toda la web</div>
-   <div class="full-backup-desc">Guarda y restaura de una vez empleados, perfiles, calendarios, comprobaciones, Excel, PDF, Analizador, Horas plantilla, Nóminas de grupo y Perentorias. Sirve para pasar los datos de la descarga a GitHub.</div>
+  <details class="full-backup" style="padding:10px 13px">
+   <summary style="cursor:pointer;font-weight:900;font-size:12px;color:#dbeafe">💾 Copia de seguridad manual</summary>
+   <div class="full-backup-desc" style="margin-top:8px">Opción de emergencia. La sincronización habitual se realiza automáticamente con Firebase.</div>
    <div class="full-backup-actions">
     <button class="full-backup-btn" type="button" onclick="FullBackup.exportAll()">⬇️ Exportar copia completa</button>
     <button class="full-backup-btn restore" type="button">⬆️ Importar copia completa<input type="file" accept=".json,application/json" onchange="FullBackup.importAll(this.files[0]);this.value=''" aria-label="Importar copia completa"></button>
    </div>
-   <div id="fullBackupStatus" class="full-backup-status">La copia se guarda en un único archivo JSON. Al importar, los datos grandes pasan automáticamente a un almacén ampliado para evitar el límite del navegador.</div>
-  </div>
+   <div id="fullBackupStatus" class="full-backup-status"></div>
+  </details>
 
   <div class="tools">
    <button class="tool" onclick="openTool('errores','Errores de turno')"><span class="tool-icon">⚠️</span><span class="tool-name">Errores de turno</span><span class="tool-desc">Descansos, libranzas, partidos y jornadas máximas.</span></button>
@@ -436,6 +436,7 @@ async function sharedHandlePicker(files,kind){
   var records=await sharedCapture(files,kind,'portada');
   if(!records.length)return;
   sharedStatus('✅ '+records.length+' '+(kind==='pdf'?'PDF':'Excel')+(records.length===1?' guardado':' guardados')+' en la base común.','ok');
+  try{if(window.HerramientasCloudSync)window.HerramientasCloudSync.markDirty();}catch(_sync){}
   if(kind==='pdf'){
    openTool('payroll','Comprobar nóminas');
    setTimeout(notifySharedFrame,650);
@@ -809,7 +810,7 @@ function sendPending(){
 function closeViewer(){
  clearTimeout(pendingTimer);pendingAttempts=0;
  try{id('frame').contentWindow.postMessage({type:'personal-close-tools'},'*')}catch(e){}
- id('viewer').classList.remove('show');document.body.style.overflow='';id('loading').style.display='none';pending=null;
+ id('viewer').classList.remove('show');document.body.style.overflow='';id('loading').style.display='none';pending=null;try{if(window.HerramientasCloudSync)window.HerramientasCloudSync.markDirty();}catch(_sync){}
 }
 function showToast(t){var e=id('toast');e.textContent=t;e.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(function(){e.classList.remove('show')},4000)}
 window.addEventListener('message',function(ev){
@@ -829,8 +830,12 @@ window.addEventListener('keydown',function(e){if(e.key==='Escape'&&id('viewer').
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp, collection, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import {
+  initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
+  doc, getDoc, setDoc, serverTimestamp, collection, getDocs,
+  writeBatch, onSnapshot
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDt6PJIWERXoZNmYCOekpsoIRuzXfmpPrU",
@@ -843,284 +848,570 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+  });
+} catch (error) {
+  console.warn("No se pudo activar la caché persistente de Firestore.", error);
+  db = getFirestore(app);
+}
+
 const provider = new GoogleAuthProvider();
-provider.setCustomParameters({ prompt: "select_account" });
+provider.setCustomParameters({prompt:"select_account"});
+
+const SYNC_SCHEMA = 2;
+const CHUNK_SIZE = 450000;
+const DEVICE_KEY = "herramientas_firebase_device_id_v2";
+const LAST_HASH_KEY = "herramientas_firebase_last_cloud_hash_v2";
+const EXCLUDED_DATABASES = new Set([
+  "herramientas_importaciones_compartidas_v1", // Excel y PDF originales: se conectarán con Cloud Storage.
+  "herramientas_almacen_extendido_v1",
+  "firebaseLocalStorageDb"
+]);
+const REQUIRED_DATABASES = [
+  "cta_herramientas_solo_independiente_v2",
+  "herramientas_nominas_grupo_independiente_v3"
+];
+
 let currentUser = null;
+let unsubscribeCloud = null;
+let monitorTimer = null;
+let uploadTimer = null;
+let applyingRemote = false;
+let uploadInProgress = false;
+let initialized = false;
+let lastCloudHash = "";
+let pendingRemoteMeta = null;
 
 function byId(id){ return document.getElementById(id); }
-function setStatus(text, type){
+function nowIso(){ return new Date().toISOString(); }
+function sleep(ms){ return new Promise(resolve=>setTimeout(resolve,ms)); }
+function safeError(error){ return String(error && (error.code || error.message) || error || "Error desconocido"); }
+
+function deviceId(){
+  let value="";
+  try{ value=localStorage.getItem(DEVICE_KEY)||""; }catch(e){}
+  if(!value){
+    value=(crypto.randomUUID?crypto.randomUUID():(Date.now().toString(36)+Math.random().toString(36).slice(2)));
+    try{ localStorage.setItem(DEVICE_KEY,value); }catch(e){}
+  }
+  return value;
+}
+
+function setStatus(message,type){
   const el=byId("firebaseStatus");
-  if(el) el.textContent=text;
+  if(el) el.textContent=message;
   const badge=byId("firebaseBadge");
   if(badge){
-    badge.className="firebase-badge"+(type?" "+type:"");
-    badge.textContent=type==="ok"?"Conectado":type==="error"?"Error":"Sin conectar";
+    badge.textContent=type==="ok"?"Sincronizado":type==="error"?"Error":type==="work"?"Sincronizando":"Sin conectar";
+    badge.className="firebase-badge"+(type==="ok"?" ok":type==="error"?" error":"");
   }
 }
+
 function updateUi(user){
   currentUser=user||null;
-  const login=byId("firebaseLoginBtn"), upload=byId("firebaseUploadProfilesBtn"), download=byId("firebaseDownloadProfilesBtn"), logout=byId("firebaseLogoutBtn"), userEl=byId("firebaseUser");
+  const login=byId("firebaseLoginBtn");
+  const init=byId("firebaseInitializeBtn");
+  const logout=byId("firebaseLogoutBtn");
+  const userEl=byId("firebaseUser");
   if(login) login.hidden=!!user;
-  if(upload) upload.disabled=!user;
-  if(download) download.disabled=!user;
   if(logout) logout.hidden=!user;
-  if(userEl) userEl.textContent=user?("Cuenta: "+(user.email||user.displayName||user.uid)):"";
-  if(user) setStatus("Sesión iniciada. Puedes subir los perfiles del PC o descargarlos en otro dispositivo.","ok");
-  else setStatus("Sin sesión. Inicia sesión con tu cuenta de Google.","");
+  if(init){ init.hidden=true; init.disabled=!user; }
+  if(userEl) userEl.textContent=user?("Cuenta: "+(user.email||user.uid)):"";
+  if(!user){
+    stopSync();
+    setStatus("Inicia sesión con la misma cuenta de Google en todos tus dispositivos.","");
+    return;
+  }
+  setStatus("Comprobando la copia online…","work");
+  startSync().catch(error=>{
+    console.error(error);
+    setStatus("No se pudo iniciar la sincronización: "+safeError(error),"error");
+  });
 }
-function isMobile(){ return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||""); }
+
+function isToolKey(key){
+  key=String(key||"");
+  if(!key) return false;
+  if(key===DEVICE_KEY || key===LAST_HASH_KEY || key.startsWith("herramientas_firebase_")) return false;
+  if(key==="cta_session" || key==="cta_live_tab_v1" || key==="cta_live_view_v1") return false;
+  if(typeof window.__isHerramientasToolKey==="function"){
+    try{ return !!window.__isHerramientasToolKey(key); }catch(e){}
+  }
+  return key.startsWith("herramientas_") || key.startsWith("cta_") || key.startsWith("perentorias:") || key.startsWith("nominas_") || key.startsWith("op_") || key==="avisos_seen";
+}
+
+function localEntries(){
+  const out={};
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(key && isToolKey(key)) out[key]=String(localStorage.getItem(key)??"");
+    }
+  }catch(e){ console.warn("No se pudo leer localStorage",e); }
+  try{
+    const ext=window.ExtendedToolStorage && window.ExtendedToolStorage.exportObject ? window.ExtendedToolStorage.exportObject() : {};
+    Object.keys(ext||{}).forEach(key=>{ if(isToolKey(key) && out[key]===undefined) out[key]=String(ext[key]??""); });
+  }catch(e){ console.warn("No se pudo leer el almacén ampliado",e); }
+  return Object.fromEntries(Object.keys(out).sort().map(key=>[key,out[key]]));
+}
+
+function requestPromise(request){
+  return new Promise((resolve,reject)=>{
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||new Error("Error IndexedDB"));
+  });
+}
+function transactionPromise(transaction){
+  return new Promise((resolve,reject)=>{
+    transaction.oncomplete=()=>resolve();
+    transaction.onerror=transaction.onabort=()=>reject(transaction.error||new Error("Error en la transacción IndexedDB"));
+  });
+}
+function openDatabase(name,version){
+  return new Promise((resolve,reject)=>{
+    const request=version?indexedDB.open(name,version):indexedDB.open(name);
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||new Error("No se pudo abrir "+name));
+  });
+}
+
+function bytesToBase64(bytes){
+  let binary="";
+  const step=0x8000;
+  for(let i=0;i<bytes.length;i+=step) binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+step,bytes.length)));
+  return btoa(binary);
+}
+function base64ToBytes(text){
+  const binary=atob(text||"");
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return bytes;
+}
+
+async function encodeValue(value,seen){
+  if(value===null || typeof value==="string" || typeof value==="number" || typeof value==="boolean") return value;
+  if(typeof value==="undefined") return {__syncType:"Undefined"};
+  if(value instanceof Date) return {__syncType:"Date",value:value.toISOString()};
+  if(value instanceof ArrayBuffer) return {__syncType:"ArrayBuffer",value:bytesToBase64(new Uint8Array(value))};
+  if(ArrayBuffer.isView(value)) return {__syncType:"TypedArray",ctor:value.constructor.name,value:bytesToBase64(new Uint8Array(value.buffer,value.byteOffset,value.byteLength))};
+  if(typeof Blob!=="undefined" && value instanceof Blob){
+    const buffer=await value.arrayBuffer();
+    return {__syncType:value instanceof File?"File":"Blob",name:value.name||"",mime:value.type||"",lastModified:value.lastModified||0,value:bytesToBase64(new Uint8Array(buffer))};
+  }
+  if(typeof value==="object"){
+    seen=seen||new WeakSet();
+    if(seen.has(value)) return {__syncType:"Circular"};
+    seen.add(value);
+  }
+  if(Array.isArray(value)){
+    const array=[];
+    for(const item of value) array.push(await encodeValue(item,seen));
+    return array;
+  }
+  if(typeof value==="object"){
+    const object={};
+    for(const key of Object.keys(value).sort()) object[key]=await encodeValue(value[key],seen);
+    return object;
+  }
+  return String(value);
+}
+
+function decodeValue(value){
+  if(!value || typeof value!=="object") return value;
+  if(value.__syncType==="Undefined") return undefined;
+  if(value.__syncType==="Date") return new Date(value.value);
+  if(value.__syncType==="ArrayBuffer") return base64ToBytes(value.value).buffer;
+  if(value.__syncType==="TypedArray"){
+    const bytes=base64ToBytes(value.value);
+    const Constructor=window[value.ctor]||Uint8Array;
+    try{ return new Constructor(bytes.buffer); }catch(e){ return bytes; }
+  }
+  if(value.__syncType==="Blob" || value.__syncType==="File"){
+    const bytes=base64ToBytes(value.value);
+    return value.__syncType==="File" ? new File([bytes],value.name||"archivo",{type:value.mime||"",lastModified:value.lastModified||Date.now()}) : new Blob([bytes],{type:value.mime||""});
+  }
+  if(value.__syncType==="Circular") return null;
+  if(Array.isArray(value)) return value.map(decodeValue);
+  const object={};
+  Object.keys(value).forEach(key=>{ object[key]=decodeValue(value[key]); });
+  return object;
+}
+
+async function databaseNames(){
+  const names=new Set(REQUIRED_DATABASES);
+  try{
+    if(indexedDB.databases){
+      const databases=await indexedDB.databases();
+      (databases||[]).forEach(info=>{
+        const name=String(info&&info.name||"");
+        if((name.startsWith("herramientas_")||name.startsWith("cta_")) && !EXCLUDED_DATABASES.has(name)) names.add(name);
+      });
+    }
+  }catch(e){}
+  return Array.from(names).filter(name=>name&&!EXCLUDED_DATABASES.has(name)).sort();
+}
+
+async function dumpDatabase(name){
+  let database;
+  try{
+    database=await openDatabase(name);
+    const stores={};
+    for(const storeName of Array.from(database.objectStoreNames).sort()){
+      const transaction=database.transaction(storeName,"readonly");
+      const store=transaction.objectStore(storeName);
+      const keysRequest=store.getAllKeys();
+      const valuesRequest=store.getAll();
+      const [keys,values]=await Promise.all([requestPromise(keysRequest),requestPromise(valuesRequest)]);
+      await transactionPromise(transaction);
+      const records=[];
+      for(let i=0;i<values.length;i++) records.push({key:await encodeValue(keys[i]),value:await encodeValue(values[i])});
+      stores[storeName]={keyPath:store.keyPath,autoIncrement:!!store.autoIncrement,records};
+    }
+    return {version:database.version,stores};
+  }catch(error){
+    console.warn("No se pudo incluir IndexedDB "+name,error);
+    return null;
+  }finally{
+    try{ if(database) database.close(); }catch(e){}
+  }
+}
+
+async function buildSnapshot(){
+  if(window.ExtendedToolStorage && window.ExtendedToolStorage.ready) await window.ExtendedToolStorage.ready;
+  const databases={};
+  for(const name of await databaseNames()){
+    const dump=await dumpDatabase(name);
+    if(dump) databases[name]=dump;
+  }
+  return {
+    schema:SYNC_SCHEMA,
+    localStorage:localEntries(),
+    indexedDB:databases
+  };
+}
+
+async function sha256(text){
+  const bytes=new TextEncoder().encode(text);
+  const digest=await crypto.subtle.digest("SHA-256",bytes);
+  return Array.from(new Uint8Array(digest)).map(byte=>byte.toString(16).padStart(2,"0")).join("");
+}
+
+async function packText(text){
+  const input=new TextEncoder().encode(text);
+  if(typeof CompressionStream!=="undefined"){
+    const compressedStream=new Blob([input]).stream().pipeThrough(new CompressionStream("gzip"));
+    const compressed=new Uint8Array(await new Response(compressedStream).arrayBuffer());
+    return {format:"gzip-base64-v1",data:bytesToBase64(compressed),rawBytes:input.length,packedBytes:compressed.length};
+  }
+  return {format:"plain-base64-v1",data:bytesToBase64(input),rawBytes:input.length,packedBytes:input.length};
+}
+
+async function unpackText(format,data){
+  const bytes=base64ToBytes(data);
+  if(format==="gzip-base64-v1"){
+    if(typeof DecompressionStream==="undefined") throw new Error("Este navegador no puede descomprimir la copia online.");
+    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+function metaRef(){ return doc(db,"users",currentUser.uid,"sync","main"); }
+function chunksRef(){ return collection(db,"users",currentUser.uid,"sync","main","chunks"); }
+
+async function uploadSnapshot(snapshot,reason){
+  if(!currentUser || uploadInProgress || applyingRemote) return false;
+  uploadInProgress=true;
+  setStatus(reason==="initial"?"Subiendo la primera copia completa…":"Guardando los cambios en Internet…","work");
+  try{
+    const json=JSON.stringify(snapshot);
+    const hash=await sha256(json);
+    if(reason!=="initial" && hash===lastCloudHash){
+      setStatus("Todo está actualizado en todos los dispositivos.","ok");
+      return true;
+    }
+    const packed=await packText(json);
+    const chunks=[];
+    for(let i=0;i<packed.data.length;i+=CHUNK_SIZE) chunks.push(packed.data.slice(i,i+CHUNK_SIZE));
+    const previous=await getDoc(metaRef());
+    const previousCount=previous.exists()?Number(previous.data().chunkCount||0):0;
+
+    for(let start=0;start<chunks.length;start+=10){
+      const batch=writeBatch(db);
+      chunks.slice(start,start+10).forEach((data,index)=>{
+        const absolute=start+index;
+        batch.set(doc(db,"users",currentUser.uid,"sync","main","chunks",String(absolute).padStart(5,"0")),{index:absolute,data});
+      });
+      await batch.commit();
+    }
+    if(previousCount>chunks.length){
+      for(let start=chunks.length;start<previousCount;start+=400){
+        const batch=writeBatch(db);
+        for(let i=start;i<Math.min(previousCount,start+400);i++) batch.delete(doc(db,"users",currentUser.uid,"sync","main","chunks",String(i).padStart(5,"0")));
+        await batch.commit();
+      }
+    }
+    await setDoc(metaRef(),{
+      schema:SYNC_SCHEMA,
+      initialized:true,
+      hash,
+      format:packed.format,
+      chunkCount:chunks.length,
+      rawBytes:packed.rawBytes,
+      packedBytes:packed.packedBytes,
+      deviceId:deviceId(),
+      deviceLabel:navigator.userAgent.includes("Mobile")?"móvil":"ordenador",
+      updatedMs:Date.now(),
+      updatedAt:serverTimestamp()
+    });
+    initialized=true;
+    lastCloudHash=hash;
+    try{ localStorage.setItem(LAST_HASH_KEY,hash); }catch(e){}
+    const init=byId("firebaseInitializeBtn"); if(init) init.hidden=true;
+    setStatus("Todo está actualizado en todos los dispositivos.","ok");
+    return true;
+  }catch(error){
+    console.error(error);
+    setStatus("No se pudieron guardar los cambios: "+safeError(error),"error");
+    return false;
+  }finally{
+    uploadInProgress=false;
+  }
+}
+
+async function downloadSnapshot(meta){
+  const snapshot=await getDocs(chunksRef());
+  const rows=[];
+  snapshot.forEach(item=>rows.push({id:item.id,...item.data()}));
+  rows.sort((a,b)=>Number(a.index)-Number(b.index));
+  if(rows.length<Number(meta.chunkCount||0)) throw new Error("La copia online está incompleta. Reintenta dentro de unos segundos.");
+  const packed=rows.slice(0,Number(meta.chunkCount||rows.length)).map(row=>String(row.data||"")).join("");
+  const json=await unpackText(meta.format,packed);
+  const hash=await sha256(json);
+  if(hash!==meta.hash) throw new Error("La copia online no ha superado la comprobación de integridad.");
+  return {hash,snapshot:JSON.parse(json)};
+}
+
+async function saveLocalValue(key,value){
+  let saved=false;
+  try{ localStorage.setItem(key,String(value??"")); saved=true; }catch(error){ try{localStorage.removeItem(key);}catch(e){} }
+  if(saved){
+    try{ if(window.ExtendedToolStorage) await window.ExtendedToolStorage.remove(key); }catch(e){}
+  }else{
+    if(!window.ExtendedToolStorage) throw new Error("No hay espacio local suficiente.");
+    await window.ExtendedToolStorage.set(key,String(value??""));
+  }
+}
+
+async function clearSyncedLocalValues(target){
+  const keep=new Set(Object.keys(target||{}));
+  const current=localEntries();
+  for(const key of Object.keys(current)){
+    if(!keep.has(key)){
+      try{ localStorage.removeItem(key); }catch(e){}
+      try{ if(window.ExtendedToolStorage) await window.ExtendedToolStorage.remove(key); }catch(e){}
+    }
+  }
+}
+
+async function restoreDatabase(name,dump){
+  if(!dump || !dump.stores) return;
+  let database;
+  try{
+    database=await openDatabase(name);
+    const missing=Object.keys(dump.stores).filter(storeName=>!database.objectStoreNames.contains(storeName));
+    if(missing.length){
+      database.close();
+      const nextVersion=Math.max((Number(dump.version)||1)+1,(await new Promise((resolve,reject)=>{
+        const request=indexedDB.open(name);
+        request.onsuccess=()=>{const version=request.result.version;request.result.close();resolve(version+1);};
+        request.onerror=()=>reject(request.error);
+      }))); 
+      database=await new Promise((resolve,reject)=>{
+        const request=indexedDB.open(name,nextVersion);
+        request.onupgradeneeded=()=>{
+          const dbx=request.result;
+          missing.forEach(storeName=>{
+            const info=dump.stores[storeName]||{};
+            if(!dbx.objectStoreNames.contains(storeName)){
+              const options={autoIncrement:!!info.autoIncrement};
+              if(info.keyPath!==null && typeof info.keyPath!=="undefined") options.keyPath=info.keyPath;
+              dbx.createObjectStore(storeName,options);
+            }
+          });
+        };
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+    }
+    for(const storeName of Object.keys(dump.stores).sort()){
+      if(!database.objectStoreNames.contains(storeName)) continue;
+      const transaction=database.transaction(storeName,"readwrite");
+      const store=transaction.objectStore(storeName);
+      store.clear();
+      for(const record of dump.stores[storeName].records||[]){
+        const key=decodeValue(record.key);
+        const value=decodeValue(record.value);
+        if(store.keyPath!==null) store.put(value); else store.put(value,key);
+      }
+      await transactionPromise(transaction);
+    }
+  }finally{
+    try{ if(database) database.close(); }catch(e){}
+  }
+}
+
+async function applyRemoteSnapshot(meta){
+  if(applyingRemote || !currentUser) return;
+  applyingRemote=true;
+  setStatus("Aplicando cambios recibidos de otro dispositivo…","work");
+  try{
+    if(window.ExtendedToolStorage && window.ExtendedToolStorage.ready) await window.ExtendedToolStorage.ready;
+    const result=await downloadSnapshot(meta);
+    const data=result.snapshot||{};
+    await clearSyncedLocalValues(data.localStorage||{});
+    for(const key of Object.keys(data.localStorage||{})) await saveLocalValue(key,data.localStorage[key]);
+    for(const name of Object.keys(data.indexedDB||{})) await restoreDatabase(name,data.indexedDB[name]);
+    lastCloudHash=result.hash;
+    try{ localStorage.setItem(LAST_HASH_KEY,result.hash); }catch(e){}
+    setStatus("Cambios recibidos. Actualizando las herramientas…","ok");
+    sessionStorage.setItem("herramientas_firebase_remote_applied","1");
+    setTimeout(()=>location.reload(),900);
+  }catch(error){
+    console.error(error);
+    setStatus("No se pudieron aplicar los cambios online: "+safeError(error),"error");
+  }finally{
+    applyingRemote=false;
+  }
+}
+
+async function checkLocalChanges(){
+  if(!initialized || !currentUser || applyingRemote || uploadInProgress || document.hidden) return;
+  try{
+    const snapshot=await buildSnapshot();
+    const hash=await sha256(JSON.stringify(snapshot));
+    if(hash!==lastCloudHash){
+      clearTimeout(uploadTimer);
+      uploadTimer=setTimeout(()=>uploadSnapshot(snapshot,"change"),1200);
+    }
+  }catch(error){ console.warn("Comprobación local",error); }
+}
+
+function startMonitor(){
+  clearInterval(monitorTimer);
+  monitorTimer=setInterval(checkLocalChanges,8000);
+  window.addEventListener("storage",markDirty);
+  window.addEventListener("online",markDirty);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) markDirty(); });
+}
+
+function markDirty(){
+  if(!initialized || applyingRemote) return;
+  clearTimeout(uploadTimer);
+  uploadTimer=setTimeout(checkLocalChanges,900);
+}
+
+function stopSync(){
+  initialized=false;
+  lastCloudHash="";
+  pendingRemoteMeta=null;
+  if(unsubscribeCloud){ try{unsubscribeCloud();}catch(e){} unsubscribeCloud=null; }
+  clearInterval(monitorTimer); monitorTimer=null;
+  clearTimeout(uploadTimer); uploadTimer=null;
+}
+
+async function startSync(){
+  stopSync();
+  if(!currentUser) return;
+  if(window.ExtendedToolStorage && window.ExtendedToolStorage.ready) await window.ExtendedToolStorage.ready;
+  try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist(); }catch(e){}
+  const reference=metaRef();
+  const initial=await getDoc(reference);
+  if(!initial.exists() || !initial.data().initialized){
+    const init=byId("firebaseInitializeBtn");
+    if(init){ init.hidden=false; init.disabled=false; }
+    setStatus("Primera configuración: abre esta web en el PC que tiene todos los datos y pulsa «Usar este dispositivo como origen inicial».","");
+    return;
+  }
+  initialized=true;
+  const meta=initial.data();
+  lastCloudHash=String(meta.hash||"");
+  const remembered=(()=>{try{return localStorage.getItem(LAST_HASH_KEY)||"";}catch(e){return"";}})();
+  if(remembered!==lastCloudHash){
+    await applyRemoteSnapshot(meta);
+    return;
+  }
+  setStatus("Todo está actualizado en todos los dispositivos.","ok");
+  startMonitor();
+  unsubscribeCloud=onSnapshot(reference,{includeMetadataChanges:true},async snapshot=>{
+    if(!snapshot.exists()) return;
+    const remote=snapshot.data()||{};
+    if(!remote.initialized || !remote.hash) return;
+    if(remote.hash===lastCloudHash) return;
+    if(remote.deviceId===deviceId() && uploadInProgress) return;
+    if(applyingRemote){ pendingRemoteMeta=remote; return; }
+    await applyRemoteSnapshot(remote);
+  },error=>setStatus("Se perdió la conexión en tiempo real: "+safeError(error),"error"));
+}
 
 window.FirebaseTest={
   async login(){
     try{
-      setStatus("Abriendo acceso de Google…","");
-      await setPersistence(auth,browserLocalPersistence);
+      setStatus("Abriendo el acceso con Google…","work");
       await signInWithPopup(auth,provider);
-    }catch(err){
-      console.error(err);
-      setStatus("No se pudo iniciar sesión: "+(err.code||err.message||err),"error");
+    }catch(error){
+      console.error(error);
+      setStatus("No se pudo iniciar sesión: "+safeError(error),"error");
     }
   },
-  async subirPerfiles(){
+  async initializeFromDevice(){
     if(!currentUser){ setStatus("Primero inicia sesión.","error"); return; }
-    const btn=byId("firebaseUploadProfilesBtn");
-    if(btn) btn.disabled=true;
+    const button=byId("firebaseInitializeBtn");
+    if(button) button.disabled=true;
     try{
-      setStatus("Leyendo empleados y perfiles guardados en este PC…","");
-      if(window.ExtendedToolStorage&&window.ExtendedToolStorage.ready) await window.ExtendedToolStorage.ready;
-      const key="herramientas_solo_independiente_v2:perfiles_laborales_compartidos:v1";
-      let candidates=[];
-      try{ const v=localStorage.getItem(key); if(v)candidates.push(v); }catch(e){}
-      try{ const v=window.ExtendedToolStorage&&window.ExtendedToolStorage.get(key); if(v)candidates.push(v); }catch(e){}
-      try{
-        for(let i=0;i<localStorage.length;i++){
-          const k=localStorage.key(i);
-          if(k&&k.includes("perfiles_laborales_compartidos")){
-            const v=localStorage.getItem(k); if(v)candidates.push(v);
-          }
-        }
-      }catch(e){}
-      try{
-        const ext=window.ExtendedToolStorage&&window.ExtendedToolStorage.exportObject?window.ExtendedToolStorage.exportObject():{};
-        Object.keys(ext||{}).forEach(k=>{if(k.includes("perfiles_laborales_compartidos")&&ext[k])candidates.push(ext[k]);});
-      }catch(e){}
-
-      let source=null, profiles=[];
-      for(const raw of candidates){
-        try{
-          const parsed=JSON.parse(raw);
-          const list=parsed&&parsed.profiles&&typeof parsed.profiles==="object"?Object.values(parsed.profiles):[];
-          if(list.length>profiles.length){ source=parsed; profiles=list; }
-        }catch(e){}
-      }
-      if(!profiles.length) throw new Error("No se han encontrado perfiles laborales guardados en este navegador.");
-
-      function cleanText(v){return String(v==null?"":v).trim();}
-      function norm(v){return cleanText(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim();}
-      function payrollKey(v){return cleanText(v).replace(/\D/g,"").replace(/^0+/,"");}
-      function hashText(v){let h=2166136261;for(let i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36);}
-      function docId(p){const pay=payrollKey(p.payroll);if(pay)return "nomina_"+pay;const n=norm(p.name)||cleanText(p.id)||"empleado";return "nombre_"+hashText(n);}
-      function cleanConfig(cfg){const out={};Object.keys(cfg||{}).forEach(k=>{const v=cfg[k];if(v===null||["string","number","boolean"].includes(typeof v))out[k]=v;});return out;}
-
-      const deduped=new Map();
-      profiles.forEach(p=>{
-        p=p||{};const id=docId(p),prev=deduped.get(id);
-        const clean={
-          localId:cleanText(p.id),
-          name:cleanText(p.name),
-          payroll:cleanText(p.payroll),
-          config:cleanConfig(p.config),
-          createdAt:cleanText(p.createdAt),
-          updatedAt:cleanText(p.updatedAt),
-          lastSource:cleanText(p.lastSource)
-        };
-        if(!prev) deduped.set(id,clean);
-        else{
-          clean.config=Object.assign({},prev.config||{},clean.config||{});
-          clean.name=clean.name||prev.name;clean.payroll=clean.payroll||prev.payroll;
-          clean.createdAt=clean.createdAt||prev.createdAt;
-          if((prev.updatedAt||"")>(clean.updatedAt||"")) clean.updatedAt=prev.updatedAt;
-          clean.lastSource=clean.lastSource||prev.lastSource;
-          deduped.set(id,clean);
-        }
-      });
-
-      const entries=Array.from(deduped.entries());
-      setStatus("Subiendo "+entries.length+" perfiles a Firebase…","");
-      for(let pos=0;pos<entries.length;pos+=400){
-        const batch=writeBatch(db);
-        entries.slice(pos,pos+400).forEach(([id,p])=>{
-          batch.set(doc(db,"users",currentUser.uid,"employeeProfiles",id),Object.assign({},p,{
-            cloudId:id,
-            ownerUid:currentUser.uid,
-            uploadedFrom:location.origin+location.pathname,
-            cloudUpdatedAt:serverTimestamp()
-          }),{merge:true});
+      const snapshot=await buildSnapshot();
+      const localCount=Object.keys(snapshot.localStorage||{}).length;
+      const dbCount=Object.keys(snapshot.indexedDB||{}).length;
+      if(!localCount && !dbCount) throw new Error("Este dispositivo no contiene datos de las herramientas.");
+      const ok=await uploadSnapshot(snapshot,"initial");
+      if(ok){
+        initialized=true;
+        startMonitor();
+        if(unsubscribeCloud) unsubscribeCloud();
+        unsubscribeCloud=onSnapshot(metaRef(),{includeMetadataChanges:true},async cloud=>{
+          if(!cloud.exists()) return;
+          const remote=cloud.data()||{};
+          if(remote.hash && remote.hash!==lastCloudHash && remote.deviceId!==deviceId()) await applyRemoteSnapshot(remote);
         });
-        await batch.commit();
       }
-      await setDoc(doc(db,"users",currentUser.uid,"syncStatus","profiles"),{
-        phase:1,
-        profileCount:entries.length,
-        sourceUpdatedAt:source&&source.updatedAt||"",
-        uploadedFrom:location.origin+location.pathname,
-        uploadedAt:serverTimestamp()
-      },{merge:true});
-      const cloudSnap=await getDocs(collection(db,"users",currentUser.uid,"employeeProfiles"));
-      setStatus("✅ Subida correcta: "+entries.length+" perfiles enviados y "+cloudSnap.size+" perfiles encontrados en Firebase.","ok");
-    }catch(err){
-      console.error(err);
-      setStatus("No se pudieron subir los perfiles: "+(err.code||err.message||err),"error");
-    }finally{ if(btn) btn.disabled=!currentUser; }
-  },
-  async descargarPerfiles(){
-    if(!currentUser){ setStatus("Primero inicia sesión.","error"); return; }
-    const btn=byId("firebaseDownloadProfilesBtn");
-    if(btn) btn.disabled=true;
-    try{
-      setStatus("Descargando perfiles desde Firebase…","");
-      if(window.ExtendedToolStorage&&window.ExtendedToolStorage.ready) await window.ExtendedToolStorage.ready;
-      const snap=await getDocs(collection(db,"users",currentUser.uid,"employeeProfiles"));
-      if(snap.empty) throw new Error("No hay perfiles guardados en Firebase.");
-
-      const key="herramientas_solo_independiente_v2:perfiles_laborales_compartidos:v1";
-      let localRoot={version:1,profiles:{},updatedAt:""};
-      let rawLocal=null;
-      try{ rawLocal=localStorage.getItem(key); }catch(e){}
-      if(!rawLocal){ try{ rawLocal=window.ExtendedToolStorage&&window.ExtendedToolStorage.get(key); }catch(e){} }
-      if(rawLocal){
-        try{
-          const parsed=JSON.parse(rawLocal);
-          if(parsed&&parsed.profiles&&typeof parsed.profiles==="object") localRoot=parsed;
-        }catch(e){}
-      }
-      if(!localRoot.profiles||typeof localRoot.profiles!=="object") localRoot.profiles={};
-
-      function cleanText(v){return String(v==null?"":v).trim();}
-      function norm(v){return cleanText(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim();}
-      function payrollKey(v){return cleanText(v).replace(/\D/g,"").replace(/^0+/,"");}
-      function identity(p){const pay=payrollKey(p&&p.payroll);if(pay)return "p:"+pay;const n=norm(p&&p.name);return n?"n:"+n:"";}
-      function cleanConfig(cfg){const out={};Object.keys(cfg||{}).forEach(k=>{const v=cfg[k];if(v===null||["string","number","boolean"].includes(typeof v))out[k]=v;});return out;}
-
-      const profiles=localRoot.profiles;
-      const idByIdentity={};
-      Object.keys(profiles).forEach(id=>{const ident=identity(profiles[id]);if(ident&&!idByIdentity[ident])idByIdentity[ident]=id;});
-      let downloaded=0,updated=0,created=0;
-      snap.forEach(ds=>{
-        const p=ds.data()||{};
-        const ident=identity(p);
-        let targetId=(ident&&idByIdentity[ident])||cleanText(p.localId)||cleanText(p.cloudId)||ds.id;
-        if(!targetId) targetId=ds.id;
-        const prev=profiles[targetId]||{};
-        const cfg=Object.assign({},cleanConfig(prev.config),cleanConfig(p.config));
-        profiles[targetId]={
-          id:targetId,
-          name:cleanText(p.name)||cleanText(prev.name),
-          payroll:cleanText(p.payroll)||cleanText(prev.payroll),
-          config:cfg,
-          createdAt:cleanText(prev.createdAt)||cleanText(p.createdAt)||new Date().toISOString(),
-          updatedAt:cleanText(p.updatedAt)||new Date().toISOString(),
-          lastSource:"firebase"
-        };
-        if(ident) idByIdentity[ident]=targetId;
-        downloaded++;
-        if(Object.keys(prev).length) updated++; else created++;
-      });
-      localRoot.version=1;
-      localRoot.updatedAt=new Date().toISOString();
-      const raw=JSON.stringify(localRoot);
-      let savedLocal=false;
-      try{ localStorage.setItem(key,raw); savedLocal=true; }catch(e){ try{localStorage.removeItem(key);}catch(_e){} }
-      if(savedLocal){
-        try{ if(window.ExtendedToolStorage) await window.ExtendedToolStorage.remove(key); }catch(e){}
-      }else{
-        if(!window.ExtendedToolStorage) throw new Error("No hay espacio local para guardar los perfiles.");
-        await window.ExtendedToolStorage.set(key,raw);
-      }
-      // Crear o actualizar también los registros visibles de Comprobar nóminas.
-      // Los perfiles compartidos guardan la configuración, pero Comprobar nóminas
-      // solo muestra empleados que existen en su estado propio.
-      const payrollStateKey="herramientas_solo_independiente_v2:nominas_empleados:indexB:v1";
-      let payrollRaw=null;
-      try{ payrollRaw=localStorage.getItem(payrollStateKey); }catch(e){}
-      if(!payrollRaw){ try{ payrollRaw=window.ExtendedToolStorage&&window.ExtendedToolStorage.get(payrollStateKey); }catch(e){} }
-      let payrollState={version:1,employees:{},activeId:"",updatedAt:""};
-      if(payrollRaw){
-        try{
-          const parsed=JSON.parse(payrollRaw);
-          if(parsed&&parsed.employees&&typeof parsed.employees==="object") payrollState=parsed;
-        }catch(e){}
-      }
-      if(!payrollState.employees||typeof payrollState.employees!=="object") payrollState.employees={};
-      const employeeIdByIdentity={};
-      Object.keys(payrollState.employees).forEach(id=>{
-        const emp=payrollState.employees[id]||{};
-        const ident=identity(emp);
-        if(ident&&!employeeIdByIdentity[ident]) employeeIdByIdentity[ident]=id;
-      });
-      let payrollCreated=0,payrollUpdated=0;
-      Object.keys(profiles).forEach(profileId=>{
-        const p=profiles[profileId]||{};
-        const ident=identity(p);
-        let employeeId=(ident&&employeeIdByIdentity[ident])||"";
-        let emp=employeeId?payrollState.employees[employeeId]:null;
-        if(!emp){
-          employeeId="emp_firebase_"+cleanText(profileId).replace(/[^A-Za-z0-9_-]+/g,"_");
-          let baseId=employeeId,n=2;
-          while(payrollState.employees[employeeId]) employeeId=baseId+"_"+(n++);
-          emp={id:employeeId,name:"",payroll:"",config:{},years:{}};
-          payrollState.employees[employeeId]=emp;
-          payrollCreated++;
-        }else payrollUpdated++;
-        emp.id=employeeId;
-        emp.name=cleanText(p.name)||cleanText(emp.name);
-        emp.payroll=cleanText(p.payroll)||cleanText(emp.payroll);
-        emp.sharedProfileId=cleanText(p.id)||profileId;
-        emp.config=Object.assign({},emp.config||{},cleanConfig(p.config));
-        emp.years=emp.years&&typeof emp.years==="object"?emp.years:{};
-        if(ident) employeeIdByIdentity[ident]=employeeId;
-      });
-      if(!payrollState.activeId||!payrollState.employees[payrollState.activeId]) payrollState.activeId=Object.keys(payrollState.employees)[0]||"";
-      payrollState.updatedAt=new Date().toISOString();
-      const payrollStateRaw=JSON.stringify(payrollState);
-      let payrollSavedLocal=false;
-      try{ localStorage.setItem(payrollStateKey,payrollStateRaw); payrollSavedLocal=true; }catch(e){ try{localStorage.removeItem(payrollStateKey);}catch(_e){} }
-      if(payrollSavedLocal){
-        try{ if(window.ExtendedToolStorage) await window.ExtendedToolStorage.remove(payrollStateKey); }catch(e){}
-      }else{
-        if(!window.ExtendedToolStorage) throw new Error("No hay espacio local para crear los empleados de Comprobar nóminas.");
-        await window.ExtendedToolStorage.set(payrollStateKey,payrollStateRaw);
-      }
-      try{ window.dispatchEvent(new CustomEvent("herramientas-perfiles-actualizados",{detail:{count:downloaded}})); }catch(e){}
-      setStatus("✅ Descarga correcta: "+downloaded+" perfiles recibidos. Comprobar nóminas: "+payrollCreated+" empleados creados y "+payrollUpdated+" actualizados. La página se recargará.","ok");
-      setTimeout(()=>location.reload(),1600);
-    }catch(err){
-      console.error(err);
-      setStatus("No se pudieron descargar los perfiles: "+(err.code||err.message||err),"error");
-    }finally{ if(btn) btn.disabled=!currentUser; }
-  },
-  async probar(){
-    if(!currentUser){ setStatus("Primero inicia sesión.","error"); return; }
-    try{
-      await setDoc(doc(db,"users",currentUser.uid,"meta","conexion"),{ok:true,actualizado:serverTimestamp()},{merge:true});
-      setStatus("Prueba correcta: Google y Firestore están conectados.","ok");
-    }catch(err){ setStatus("Falló Firestore: "+(err.code||err.message||err),"error"); }
+    }catch(error){
+      console.error(error);
+      setStatus("No se pudo crear la primera copia online: "+safeError(error),"error");
+      if(button) button.disabled=false;
+    }
   },
   async logout(){
     try{ await signOut(auth); }
-    catch(err){ setStatus("No se pudo cerrar sesión: "+(err.code||err.message||err),"error"); }
-  }
+    catch(error){ setStatus("No se pudo cerrar sesión: "+safeError(error),"error"); }
+  },
+  markDirty,
+  syncNow:checkLocalChanges
 };
-try{ await setPersistence(auth,browserLocalPersistence); }catch(e){ console.warn(e); }
+window.HerramientasCloudSync=window.FirebaseTest;
+
+try{ await setPersistence(auth,browserLocalPersistence); }catch(error){ console.warn(error); }
 onAuthStateChanged(auth,updateUi);
+
 </script>
 
 <script>
 (function(){
   if('serviceWorker' in navigator){
     window.addEventListener('load',function(){
-      navigator.serviceWorker.register('./sw.js?v=72',{updateViaCache:'none'}).then(function(reg){
+      navigator.serviceWorker.register('./sw.js?v=73',{updateViaCache:'none'}).then(function(reg){
         try{reg.update();}catch(e){}
       }).catch(function(err){console.warn('No se pudo registrar la web app:',err);});
     });
