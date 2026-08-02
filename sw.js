@@ -1,6 +1,7 @@
-/* HERRAMIENTAS SW V68 - INDEX ORIGINAL + PERENTORIAS SEPARADA */
-const CACHE='herramientas-turnos-v68';
-const CORE=['./','./index.html','./perentorias.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+/* HERRAMIENTAS SW V69 - FIREBASE STORAGE PARA EXCEL Y PDF */
+const CACHE='herramientas-turnos-v69';
+const CORE=['./','./index.html','./perentorias.html','./firebase-storage-sync.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const STORAGE_SCRIPT='<script type="module" src="./firebase-storage-sync.js?v=1"></script>';
 
 self.addEventListener('install',event=>{
   self.skipWaiting();
@@ -15,6 +16,30 @@ self.addEventListener('activate',event=>{
   );
 });
 
+async function withStorageSync(response,url){
+  if(!response || !response.ok || url.pathname.endsWith('/perentorias.html')) return response;
+  const contentType=response.headers.get('content-type')||'';
+  if(!contentType.includes('text/html')) return response;
+
+  const html=await response.text();
+  if(html.includes('firebase-storage-sync.js')){
+    return new Response(html,{status:response.status,statusText:response.statusText,headers:cleanHeaders(response.headers)});
+  }
+
+  const injected=/<\/body>/i.test(html)
+    ? html.replace(/<\/body>/i,STORAGE_SCRIPT+'\n</body>')
+    : html+'\n'+STORAGE_SCRIPT;
+
+  return new Response(injected,{status:response.status,statusText:response.statusText,headers:cleanHeaders(response.headers)});
+}
+
+function cleanHeaders(original){
+  const headers=new Headers(original);
+  headers.delete('content-length');
+  headers.delete('content-encoding');
+  return headers;
+}
+
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET') return;
 
@@ -23,22 +48,23 @@ self.addEventListener('fetch',event=>{
   const sameOrigin=url.origin===self.location.origin;
 
   if(request.mode==='navigate'){
-    event.respondWith(
-      fetch(request,{cache:'no-store'}).then(response=>{
+    event.respondWith((async()=>{
+      try{
+        const network=await fetch(request,{cache:'no-store'});
+        const response=sameOrigin ? await withStorageSync(network,url) : network;
         if(response&&response.ok&&sameOrigin){
           const copy=response.clone();
           caches.open(CACHE).then(cache=>cache.put(request,copy));
         }
         return response;
-      }).catch(async()=>{
-        const exact=await caches.match(request,{ignoreSearch:true});
-        if(exact) return exact;
-        if(url.pathname.endsWith('/perentorias.html')){
-          return (await caches.match('./perentorias.html')) || Response.error();
-        }
-        return (await caches.match('./index.html')) || (await caches.match('./')) || Response.error();
-      })
-    );
+      }catch(error){
+        let cached=await caches.match(request,{ignoreSearch:true});
+        if(!cached && url.pathname.endsWith('/perentorias.html')) cached=await caches.match('./perentorias.html');
+        if(!cached) cached=(await caches.match('./index.html')) || (await caches.match('./'));
+        if(!cached) return Response.error();
+        return sameOrigin ? withStorageSync(cached,url) : cached;
+      }
+    })());
     return;
   }
 
