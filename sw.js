@@ -1,7 +1,7 @@
-/* HERRAMIENTAS SW V72 - BOTONES SUPERIORES Y DETALLE DE ULTIMO CAMBIO */
-const CACHE='herramientas-turnos-v72';
-const CORE=['./','./index.html','./perentorias.html','./firebase-storage-sync.js','./firebase-storage-codec.js','./firebase-storage-ui.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
-const STORAGE_SCRIPT='<script type="module" src="./firebase-storage-sync.js?v=4"></script>';
+/* HERRAMIENTAS SW V73 - CONTROLES COMPACTOS ADAPTADOS A MOVIL */
+const CACHE='herramientas-turnos-v73';
+const CORE=['./','./index.html','./perentorias.html','./firebase-storage-sync.js','./firebase-storage-codec.js','./firebase-storage-ui.js','./firebase-storage-ui-fix.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const STORAGE_SCRIPT='<script type="module" src="./firebase-storage-sync.js?v=4"></script>\n<script type="module" src="./firebase-storage-ui-fix.js?v=1"></script>';
 
 self.addEventListener('install',event=>{
   self.skipWaiting();
@@ -28,20 +28,19 @@ async function withStorageSync(response,url){
   const contentType=response.headers.get('content-type')||'';
   if(!contentType.includes('text/html')) return response;
 
-  const html=await response.text();
-  if(html.includes('firebase-storage-sync.js')){
-    return new Response(html,{
-      status:response.status,
-      statusText:response.statusText,
-      headers:cleanHeaders(response.headers)
-    });
+  let html=await response.text();
+  const scripts=[];
+  if(!html.includes('firebase-storage-sync.js')) scripts.push('<script type="module" src="./firebase-storage-sync.js?v=4"></script>');
+  if(!html.includes('firebase-storage-ui-fix.js')) scripts.push('<script type="module" src="./firebase-storage-ui-fix.js?v=1"></script>');
+
+  if(scripts.length){
+    const injected=scripts.join('\n');
+    html=/<\/body>/i.test(html)
+      ?html.replace(/<\/body>/i,`${injected}\n</body>`)
+      :`${html}\n${injected}`;
   }
 
-  const injected=/<\/body>/i.test(html)
-    ? html.replace(/<\/body>/i,STORAGE_SCRIPT+'\n</body>')
-    : html+'\n'+STORAGE_SCRIPT;
-
-  return new Response(injected,{
+  return new Response(html,{
     status:response.status,
     statusText:response.statusText,
     headers:cleanHeaders(response.headers)
@@ -76,7 +75,7 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
-  const storageModule=/\/firebase-storage-(?:sync|ui|codec)\.js$/i.test(url.pathname);
+  const storageModule=/\/firebase-storage-(?:sync|ui|codec|ui-fix)\.js$/i.test(url.pathname);
   event.respondWith(
     fetch(request,{cache:storageModule?'no-store':'default'})
       .then(response=>{
