@@ -1,7 +1,7 @@
-/* HERRAMIENTAS SW V71 - FIRESTORE EN TIEMPO REAL Y MENU COMPACTO */
-const CACHE='herramientas-turnos-v71';
+/* HERRAMIENTAS SW V72 - BOTONES SUPERIORES Y DETALLE DE ULTIMO CAMBIO */
+const CACHE='herramientas-turnos-v72';
 const CORE=['./','./index.html','./perentorias.html','./firebase-storage-sync.js','./firebase-storage-codec.js','./firebase-storage-ui.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
-const STORAGE_SCRIPT='<script type="module" src="./firebase-storage-sync.js?v=3"></script>';
+const STORAGE_SCRIPT='<script type="module" src="./firebase-storage-sync.js?v=4"></script>';
 
 self.addEventListener('install',event=>{
   self.skipWaiting();
@@ -76,8 +76,9 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
+  const storageModule=/\/firebase-storage-(?:sync|ui|codec)\.js$/i.test(url.pathname);
   event.respondWith(
-    fetch(request,{cache:url.pathname.endsWith('/firebase-storage-sync.js')?'no-store':'default'})
+    fetch(request,{cache:storageModule?'no-store':'default'})
       .then(response=>{
         if(response&&response.ok&&sameOrigin){
           const copy=response.clone();
