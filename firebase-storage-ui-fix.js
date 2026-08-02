@@ -234,7 +234,7 @@ function schedule(){
 function initialize(){
   apply();
   observer=new MutationObserver(schedule);
-  observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','title','data-tooltip']});
+  observer.observe(document.body,{childList:true,subtree:true});
   addEventListener('resize',schedule,{passive:true});
   addEventListener('orientationchange',schedule,{passive:true});
   addEventListener('scroll',schedule,{passive:true});
