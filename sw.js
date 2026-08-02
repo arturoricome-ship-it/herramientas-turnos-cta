@@ -1,7 +1,6 @@
-/* HERRAMIENTAS SW V73 - CONTROLES COMPACTOS ADAPTADOS A MOVIL */
-const CACHE='herramientas-turnos-v73';
+/* HERRAMIENTAS SW V74 - MENU JSON BAJO LA NUBE */
+const CACHE='herramientas-turnos-v74';
 const CORE=['./','./index.html','./perentorias.html','./firebase-storage-sync.js','./firebase-storage-codec.js','./firebase-storage-ui.js','./firebase-storage-ui-fix.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
-const STORAGE_SCRIPT='<script type="module" src="./firebase-storage-sync.js?v=4"></script>\n<script type="module" src="./firebase-storage-ui-fix.js?v=1"></script>';
 
 self.addEventListener('install',event=>{
   self.skipWaiting();
@@ -31,7 +30,7 @@ async function withStorageSync(response,url){
   let html=await response.text();
   const scripts=[];
   if(!html.includes('firebase-storage-sync.js')) scripts.push('<script type="module" src="./firebase-storage-sync.js?v=4"></script>');
-  if(!html.includes('firebase-storage-ui-fix.js')) scripts.push('<script type="module" src="./firebase-storage-ui-fix.js?v=1"></script>');
+  if(!html.includes('firebase-storage-ui-fix.js')) scripts.push('<script type="module" src="./firebase-storage-ui-fix.js?v=2"></script>');
 
   if(scripts.length){
     const injected=scripts.join('\n');
