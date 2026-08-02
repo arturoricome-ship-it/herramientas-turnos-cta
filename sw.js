@@ -1,7 +1,7 @@
-/* HERRAMIENTAS SW V69 - FIREBASE STORAGE PARA EXCEL Y PDF */
-const CACHE='herramientas-turnos-v69';
+/* HERRAMIENTAS SW V70 - SINCRONIZACION SILENCIOSA DE ARCHIVOS */
+const CACHE='herramientas-turnos-v70';
 const CORE=['./','./index.html','./perentorias.html','./firebase-storage-sync.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
-const STORAGE_SCRIPT='<script type="module" src="./firebase-storage-sync.js?v=1"></script>';
+const STORAGE_SCRIPT='<script type="module" src="./firebase-storage-sync.js?v=2"></script>';
 
 self.addEventListener('install',event=>{
   self.skipWaiting();
@@ -15,6 +15,13 @@ self.addEventListener('activate',event=>{
       .then(()=>self.clients.claim())
   );
 });
+
+function cleanHeaders(original){
+  const headers=new Headers(original);
+  headers.delete('content-length');
+  headers.delete('content-encoding');
+  return headers;
+}
 
 async function withStorageSync(response,url){
   if(!response || !response.ok || url.pathname.endsWith('/perentorias.html')) return response;
@@ -33,11 +40,30 @@ async function withStorageSync(response,url){
   return new Response(injected,{status:response.status,statusText:response.statusText,headers:cleanHeaders(response.headers)});
 }
 
-function cleanHeaders(original){
-  const headers=new Headers(original);
-  headers.delete('content-length');
-  headers.delete('content-encoding');
-  return headers;
+async function quietStorageScript(response){
+  if(!response || !response.ok) return response;
+  let javascript=await response.text();
+
+  javascript=javascript.replace(
+    "element.className = 'firebase-status';",
+    "element.className = 'firebase-storage-status';"
+  );
+
+  javascript=javascript.replace(
+    "  element.textContent = `Archivos: ${message}`;\n  element.dataset.state = type;",
+    "  const nextText = `Archivos: ${message}`;\n  if(element.textContent===nextText && element.dataset.state===type) return;\n  element.textContent = nextText;\n  element.dataset.state = type;"
+  );
+
+  javascript=javascript.replace(
+    "      setFileStatus('comprobando…', 'work');",
+    "      if(reason==='login' || reason==='manual') setFileStatus('comprobando…', 'work');"
+  );
+
+  return new Response(javascript,{
+    status:response.status,
+    statusText:response.statusText,
+    headers:cleanHeaders(response.headers)
+  });
 }
 
 self.addEventListener('fetch',event=>{
@@ -46,6 +72,24 @@ self.addEventListener('fetch',event=>{
   const request=event.request;
   const url=new URL(request.url);
   const sameOrigin=url.origin===self.location.origin;
+
+  if(sameOrigin && url.pathname.endsWith('/firebase-storage-sync.js')){
+    event.respondWith((async()=>{
+      try{
+        const network=await fetch(request,{cache:'no-store'});
+        const response=await quietStorageScript(network);
+        if(response&&response.ok){
+          const copy=response.clone();
+          caches.open(CACHE).then(cache=>cache.put(request,copy));
+        }
+        return response;
+      }catch(error){
+        const cached=(await caches.match(request,{ignoreSearch:true})) || (await caches.match('./firebase-storage-sync.js'));
+        return cached ? quietStorageScript(cached) : Response.error();
+      }
+    })());
+    return;
+  }
 
   if(request.mode==='navigate'){
     event.respondWith((async()=>{
