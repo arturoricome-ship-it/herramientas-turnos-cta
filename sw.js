@@ -1,5 +1,5 @@
-/* HERRAMIENTAS SW V74 - MENU JSON BAJO LA NUBE */
-const CACHE='herramientas-turnos-v74';
+/* HERRAMIENTAS SW V75 - PERENTORIAS PRIVADAS EN HORAS PLANTILLA */
+const CACHE='herramientas-turnos-v75';
 const CORE=['./','./index.html','./perentorias.html','./firebase-storage-sync.js','./firebase-storage-codec.js','./firebase-storage-ui.js','./firebase-storage-ui-fix.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',event=>{
