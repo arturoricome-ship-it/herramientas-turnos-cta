@@ -16,48 +16,83 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract relevant contexts
+      - name: Decode embedded tools and extract Horas plantilla
         run: |
           python - <<'PY'
+          import base64
+          import re
           from pathlib import Path
+
           text = Path('index.html').read_text(encoding='utf-8')
+          outdir = Path('decoded-tools')
+          outdir.mkdir(exist_ok=True)
           terms = [
               'CAMBIO DEL DÍA', 'CAMBIO DEL DIA', 'Turno anterior', 'Turno actual',
               'Guardado por', 'Horas plantilla', 'horas plantilla', 'perentoria',
               'Perentoria', 'PERENTORIA', 'Google Sheets', 'google sheets',
               'Sheets', 'sheets', 'Compañeros día a día', 'compañeros día a día',
-              'cambio del día', 'turno modificado'
+              'cambio del día', 'turno modificado', 'abrirHorasPlantilla'
           ]
-          radius = 7000
-          spans = []
-          for term in terms:
-              start = 0
-              while True:
-                  pos = text.find(term, start)
-                  if pos < 0:
-                      break
-                  spans.append((max(0, pos-radius), min(len(text), pos+len(term)+radius), term, pos))
-                  start = pos + len(term)
-          spans.sort()
-          merged = []
-          for a,b,term,pos in spans:
-              if merged and a <= merged[-1][1]:
-                  merged[-1][1] = max(merged[-1][1], b)
-                  merged[-1][2].append((term,pos))
-              else:
-                  merged.append([a,b,[(term,pos)]])
-          out = []
-          out.append(f'INDEX LENGTH: {len(text)}\nMATCHES: {len(spans)}\nSECTIONS: {len(merged)}\n')
-          for i,(a,b,matches) in enumerate(merged,1):
-              out.append(f'\n===== SECTION {i} [{a}:{b}] =====\n')
-              out.append('MATCHES: '+', '.join(f'{t}@{p}' for t,p in matches)+'\n')
-              out.append(text[a:b])
-              out.append('\n')
-          Path('hours-template-context.txt').write_text(''.join(out), encoding='utf-8')
-          print(f'Extracted {len(spans)} matches into {len(merged)} sections')
+          manifest = [f'INDEX LENGTH: {len(text)}\n']
+          patterns = [
+              re.compile(r'(?:var|const|let)\s+([A-Za-z0-9_$]+B64[A-Za-z0-9_$]*)\s*=\s*"([A-Za-z0-9+/=]+)"'),
+              re.compile(r'(?:var|const|let)\s+([A-Za-z0-9_$]+B64[A-Za-z0-9_$]*)\s*=\s*\'([A-Za-z0-9+/=]+)\'')
+          ]
+          found = []
+          seen = set()
+          for pattern in patterns:
+              for match in pattern.finditer(text):
+                  name, payload = match.group(1), match.group(2)
+                  key = (name, match.start())
+                  if key in seen:
+                      continue
+                  seen.add(key)
+                  try:
+                      decoded = base64.b64decode(payload).decode('utf-8')
+                  except Exception as exc:
+                      manifest.append(f'{name}: decode error {exc}\n')
+                      continue
+                  hits = [term for term in terms if term.lower() in decoded.lower()]
+                  manifest.append(f'{name}: encoded={len(payload)} decoded={len(decoded)} hits={hits}\n')
+                  if hits:
+                      safe = re.sub(r'[^A-Za-z0-9_.-]+', '_', name)
+                      path = outdir / f'{safe}.html'
+                      path.write_text(decoded, encoding='utf-8')
+                      found.append((name, path, decoded, hits))
+
+          contexts = []
+          radius = 10000
+          for name, path, decoded, hits in found:
+              spans = []
+              for term in terms:
+                  start = 0
+                  while True:
+                      pos = decoded.lower().find(term.lower(), start)
+                      if pos < 0:
+                          break
+                      spans.append((max(0, pos-radius), min(len(decoded), pos+len(term)+radius), term, pos))
+                      start = pos + max(1, len(term))
+              spans.sort()
+              merged = []
+              for a,b,term,pos in spans:
+                  if merged and a <= merged[-1][1]:
+                      merged[-1][1] = max(merged[-1][1], b)
+                      merged[-1][2].append((term,pos))
+                  else:
+                      merged.append([a,b,[(term,pos)]])
+              contexts.append(f'\n===== {name} ({path.name}) =====\n')
+              for i,(a,b,matches) in enumerate(merged,1):
+                  contexts.append(f'\n--- SECTION {i} [{a}:{b}] ---\n')
+                  contexts.append('MATCHES: '+', '.join(f'{t}@{p}' for t,p in matches)+'\n')
+                  contexts.append(decoded[a:b])
+                  contexts.append('\n')
+
+          Path('decoded-tools/manifest.txt').write_text(''.join(manifest), encoding='utf-8')
+          Path('decoded-tools/relevant-contexts.txt').write_text(''.join(contexts), encoding='utf-8')
+          print(f'Decoded {len(seen)} payloads; {len(found)} matched relevant terms')
           PY
       - uses: actions/upload-artifact@v4
         with:
           name: hours-template-context
-          path: hours-template-context.txt
+          path: decoded-tools
           retention-days: 1
