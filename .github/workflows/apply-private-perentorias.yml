@@ -1,0 +1,63 @@
+name: Apply private perentorias
+
+on:
+  push:
+    branches:
+      - agent/perentorias-horas-plantilla
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/perentorias-horas-plantilla
+      - name: Apply patch
+        run: python scripts/patch_private_perentorias.py
+      - name: Validate embedded application
+        run: |
+          python - <<'PY'
+          import base64
+          import re
+          from pathlib import Path
+          index=Path('index.html').read_text(encoding='utf-8')
+          m=re.search(r'(?:var|const|let)\s+MOTOR_B64\s*=\s*(["\'])([A-Za-z0-9+/=]+)\1',index)
+          if not m:
+              raise SystemExit('MOTOR_B64 no encontrado')
+          motor=base64.b64decode(m.group(2)).decode('utf-8')
+          required=[
+              "_HP_PEREN_PRIVADA_PREFIX='__HP_PEREN_PRIVADA__|'",
+              'PERENTORIAS AÑADIDAS',
+              'H. perentorias',
+              '_aplicarCambioCompartidoPublico',
+              'No computan'
+          ]
+          missing=[x for x in required if x not in motor]
+          if missing:
+              raise SystemExit('Faltan marcadores: '+repr(missing))
+          out=Path('/tmp/motor-scripts');out.mkdir(exist_ok=True)
+          n=0
+          for sm in re.finditer(r'<script([^>]*)>(.*?)</script>',motor,re.I|re.S):
+              if 'src=' in sm.group(1).lower():
+                  continue
+              n+=1
+              (out/f'{n:02d}.js').write_text(sm.group(2),encoding='utf-8')
+          print(f'{n} bloques JavaScript extraídos')
+          PY
+          for file in /tmp/motor-scripts/*.js; do node --check "$file"; done
+          grep -q "HERRAMIENTAS SW V75" sw.js
+          grep -q "herramientas-turnos-v75" sw.js
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+          else
+            git commit -m "Muestra perentorias solo en Horas plantilla"
+            git push
+          fi
