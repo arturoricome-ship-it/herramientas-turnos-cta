@@ -1,5 +1,5 @@
-/* HERRAMIENTAS SW V75 - PERENTORIAS PRIVADAS EN HORAS PLANTILLA */
-const CACHE='herramientas-turnos-v75';
+/* HERRAMIENTAS SW V76 - RECUPERACION EN EQUIPOS NUEVOS */
+const CACHE='herramientas-turnos-v76';
 const CORE=['./','./index.html','./perentorias.html','./firebase-storage-sync.js','./firebase-storage-codec.js','./firebase-storage-ui.js','./firebase-storage-ui-fix.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',event=>{
@@ -29,7 +29,7 @@ async function withStorageSync(response,url){
 
   let html=await response.text();
   const scripts=[];
-  if(!html.includes('firebase-storage-sync.js')) scripts.push('<script type="module" src="./firebase-storage-sync.js?v=4"></script>');
+  if(!html.includes('firebase-storage-sync.js')) scripts.push('<script type="module" src="./firebase-storage-sync.js?v=5"></script>');
   if(!html.includes('firebase-storage-ui-fix.js')) scripts.push('<script type="module" src="./firebase-storage-ui-fix.js?v=2"></script>');
 
   if(scripts.length){
