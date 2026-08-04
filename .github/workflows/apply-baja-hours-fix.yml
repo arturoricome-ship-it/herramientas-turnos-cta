@@ -1,4 +1,4 @@
-name: Apply baja hours fix
+name: Validate baja hours fix
 
 on:
   pull_request:
@@ -6,36 +6,34 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
-    if: github.actor != 'github-actions[bot]'
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/baja-conserva-horas-plantilla
-      - name: Apply patch
-        run: python scripts/patch_baja_horas_plantilla.py
-      - name: Validate embedded JavaScript
+      - name: Validate baja rules and embedded JavaScript
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
-          html=Path('/tmp/MOTOR_BAJA_VALIDAR.js').read_text(encoding='utf-8')
+          import base64,re
+          index=Path('index.html').read_text(encoding='utf-8')
+          match=re.search(r'var MOTOR_B64="([A-Za-z0-9+/=]+)";',index)
+          if not match: raise SystemExit('No se encontró MOTOR_B64')
+          html=base64.b64decode(match.group(1)).decode('utf-8')
+          local="if(!esHL&&tipo==='baja'&&turnoOriginal&&_turnoGrupoTieneHoras(turnoOriginal))"
+          shared="if(tipo==='baja'&&turnoOriginal&&_turnoGrupoTieneHoras(turnoOriginal))"
+          if html.count(local)!=1: raise SystemExit(f'Regla local de BAJA: {html.count(local)}')
+          if html.count(shared)!=1: raise SystemExit(f'Regla compartida de BAJA: {html.count(shared)}')
           blocks=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,flags=re.I|re.S)
           out=Path('/tmp/motor-scripts');out.mkdir(exist_ok=True)
           for i,block in enumerate(blocks):
               (out/f'{i:03d}.js').write_text(block,encoding='utf-8')
-          print(f'{len(blocks)} bloques JavaScript extraídos')
+          print(f'Reglas de BAJA correctas; {len(blocks)} bloques JavaScript extraídos')
           PY
           for file in /tmp/motor-scripts/*.js; do node --check "$file"; done
           node --check sw.js
-      - name: Commit result
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html sw.js
-          git commit -m "Mantiene las horas planificadas durante las bajas"
-          git push origin HEAD:agent/baja-conserva-horas-plantilla
+          grep -q "herramientas-turnos-v77" sw.js
