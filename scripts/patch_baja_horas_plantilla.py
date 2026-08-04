@@ -41,13 +41,7 @@ new_local = """  // Una baja mantiene la jornada planificada: cambia el estado, 
 """
 motor = replace_once(motor, old_local, new_local, 'baja local')
 
-old_shared = """  // Un cambio a día no trabajado sustituye por completo el turno importado.
-  // Sheets puede devolver todavía e1/s1 del turno anterior; se ignoran para no mezclar ambos.
-  if(_hpCambioSustituyePorNoTrabajo(tipo)){
-    return {tipo:(tipo==='dl'||tipo==='descanso'?'libre':tipo),e1:'',s1:'',e2:'',s2:'',total:0,cambioCompartido:true,etiquetaCambio:etiqueta,actualizadoPor:c.actualizado_por||c.email||''};
-  }
-"""
-new_shared = """  // La baja conserva el turno planificado y sus horas, pero se muestra como BAJA.
+shared_block = """  // La baja conserva el turno planificado y sus horas, pero se muestra como BAJA.
   if(tipo==='baja'&&turnoOriginal&&_turnoGrupoTieneHoras(turnoOriginal)){
     return Object.assign({},turnoOriginal,{
       tipo:'baja',
@@ -57,13 +51,19 @@ new_shared = """  // La baja conserva el turno planificado y sus horas, pero se 
     });
   }
 
-  // El resto de cambios a día no trabajado sí sustituye por completo el turno importado.
-  // Sheets puede devolver todavía e1/s1 del turno anterior; se ignoran para no mezclar ambos.
-  if(_hpCambioSustituyePorNoTrabajo(tipo)){
-    return {tipo:(tipo==='dl'||tipo==='descanso'?'libre':tipo),e1:'',s1:'',e2:'',s2:'',total:0,cambioCompartido:true,etiquetaCambio:etiqueta,actualizadoPor:c.actualizado_por||c.email||''};
-  }
 """
-motor = replace_once(motor, old_shared, new_shared, 'baja compartida')
+shared_return = "return {tipo:(tipo==='dl'||tipo==='descanso'?'libre':tipo),e1:'',s1:'',e2:'',s2:'',total:0,cambioCompartido:true,etiquetaCambio:etiqueta,actualizadoPor:c.actualizado_por||c.email||''};"
+return_pos = motor.find(shared_return)
+if return_pos < 0:
+    raise SystemExit('No se encontró el retorno de los estados no trabajados')
+function_pos = motor.rfind('function _hpCambioToTurnoHoras', 0, return_pos)
+if function_pos < 0:
+    raise SystemExit('No se encontró _hpCambioToTurnoHoras')
+if shared_block.strip() not in motor[function_pos:return_pos]:
+    if_pos = motor.rfind('\n  if(', function_pos, return_pos)
+    if if_pos < 0:
+        raise SystemExit('No se encontró la condición de estados no trabajados')
+    motor = motor[:if_pos + 1] + shared_block + motor[if_pos + 1:]
 
 encoded = base64.b64encode(motor.encode('utf-8')).decode('ascii')
 index_text = index_text[:match.start(1)] + encoded + index_text[match.end(1):]
