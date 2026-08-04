@@ -1,0 +1,41 @@
+name: Apply baja hours fix
+
+on:
+  push:
+    branches:
+      - agent/baja-conserva-horas-plantilla
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/baja-conserva-horas-plantilla
+      - name: Apply patch
+        run: python scripts/patch_baja_horas_plantilla.py
+      - name: Validate embedded JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('/tmp/MOTOR_BAJA_VALIDAR.js').read_text(encoding='utf-8')
+          blocks=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,flags=re.I|re.S)
+          out=Path('/tmp/motor-scripts');out.mkdir(exist_ok=True)
+          for i,block in enumerate(blocks):
+              (out/f'{i:03d}.js').write_text(block,encoding='utf-8')
+          print(f'{len(blocks)} bloques JavaScript extraídos')
+          PY
+          for file in /tmp/motor-scripts/*.js; do node --check "$file"; done
+          node --check sw.js
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js
+          git commit -m "Mantiene las horas planificadas durante las bajas"
+          git push origin HEAD:agent/baja-conserva-horas-plantilla
