@@ -1,9 +1,9 @@
 name: Apply baja hours fix
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/baja-conserva-horas-plantilla
+      - main
 
 permissions:
   contents: write
