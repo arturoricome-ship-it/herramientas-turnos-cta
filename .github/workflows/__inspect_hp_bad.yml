@@ -1,0 +1,56 @@
+name: Inspect HP bad shifts
+on:
+  push:
+    branches:
+      - fix/hp-turnos-malos-mes
+    paths:
+      - '.github/workflows/__inspect_hp_bad.yml'
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect current source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,base64
+          html=Path('index.html').read_text(encoding='utf-8')
+          m=re.search(r'var\s+MOTOR_B64="([A-Za-z0-9+/=]+)";',html)
+          if not m: raise SystemExit('MOTOR_B64 no encontrado')
+          motor=base64.b64decode(m.group(1)).decode('utf-8')
+          terms=[
+            'function renderHorasPlantillaTurnosMalos',
+            'renderHorasPlantillaTurnosMalos=',
+            'renderHorasPlantillaTurnosMalos()',
+            'hp-bad',
+            'Turnos malos'
+          ]
+          out=[]
+          out.append('HEAD='+__import__('subprocess').check_output(['git','rev-parse','HEAD'],text=True).strip())
+          out.append('ROOT_FILES:\n'+ '\n'.join(str(p) for p in sorted(Path('.').glob('*'))))
+          out.append('WORKFLOWS:\n'+ '\n'.join(str(p) for p in sorted(Path('.github/workflows').glob('*'))) if Path('.github/workflows').exists() else 'WORKFLOWS: none')
+          for t in terms:
+            starts=[]
+            pos=0
+            while True:
+              p=motor.find(t,pos)
+              if p<0: break
+              starts.append(p); pos=p+1
+            out.append(f'\nTERM {t!r}: {starts}')
+            for p in starts[:4]:
+              out.append(f'\n===== {t} @ {p} =====\n')
+              out.append(motor[max(0,p-5000):p+14000])
+          Path('__hp_bad_diag.txt').write_text('\n'.join(out),encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/__inspect_hp_bad.yml
+          git add __hp_bad_diag.txt
+          git commit -m 'Inspeccion temporal de turnos malos en Horas plantilla'
+          git push
