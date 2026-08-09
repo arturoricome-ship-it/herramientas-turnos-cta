@@ -1,5 +1,5 @@
-/* HERRAMIENTAS SW V77 - BAJA CONSERVA HORAS EN PLANTILLA */
-const CACHE='herramientas-turnos-v77';
+/* HERRAMIENTAS SW V78 - MES EN TURNOS MALOS */
+const CACHE='herramientas-turnos-v78';
 const CORE=['./','./index.html','./perentorias.html','./firebase-storage-sync.js','./firebase-storage-codec.js','./firebase-storage-ui.js','./firebase-storage-ui-fix.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',event=>{
