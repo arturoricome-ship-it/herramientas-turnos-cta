@@ -30,15 +30,15 @@ jobs:
           replacements=[
             (
               "var txt=(nombre+' '+categoria+' dia '+dia.dia+' '+dia.horario+' '+bad.motivo).toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');",
-              "var mesLabel=String(dia.mesLabel||'').trim();\\n      var txt=(nombre+' '+categoria+' dia '+dia.dia+' '+mesLabel+' '+dia.horario+' '+bad.motivo).toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');"
+              "var mesLabel=String(dia.mesLabel||'').trim();\n      var txt=(nombre+' '+categoria+' dia '+dia.dia+' '+mesLabel+' '+dia.horario+' '+bad.motivo).toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');"
             ),
             (
               "malos.push({nombre:nombre,categoria:categoria,dia:dia.dia,horario:dia.horario,bad:bad});",
               "malos.push({nombre:nombre,categoria:categoria,dia:dia.dia,mes:dia.mes||'',mesLabel:mesLabel,monthIdx:dia.monthIdx,horario:dia.horario,bad:bad});"
             ),
             (
-              "malos.sort(function(a,b){\\n    if(a.dia!==b.dia)return a.dia-b.dia;",
-              "malos.sort(function(a,b){\\n    var ma=String(a.mes||''),mb=String(b.mes||'');\\n    if(ma!==mb)return ma.localeCompare(mb);\\n    if(a.dia!==b.dia)return a.dia-b.dia;"
+              "malos.sort(function(a,b){\n    if(a.dia!==b.dia)return a.dia-b.dia;",
+              "malos.sort(function(a,b){\n    var ma=String(a.mes||''),mb=String(b.mes||'');\n    if(ma!==mb)return ma.localeCompare(mb);\n    if(a.dia!==b.dia)return a.dia-b.dia;"
             ),
             (
               "+'<div><div class=\"hp-name\">'+escH(x.nombre)+'</div><div class=\"hp-cat\">'+escH(x.categoria)+' · Día '+x.dia+'</div></div>'",
@@ -71,3 +71,4 @@ jobs:
           git add index.html sw.js
           git commit -m 'Muestra el mes en Turnos malos de Horas plantilla'
           git push
+# retrigger 2026-08-09
