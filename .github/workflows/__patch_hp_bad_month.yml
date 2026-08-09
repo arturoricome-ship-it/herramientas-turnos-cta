@@ -1,0 +1,73 @@
+name: Patch HP bad shifts month
+on:
+  push:
+    branches:
+      - fix/hp-turnos-malos-mes
+    paths:
+      - '.github/workflows/__patch_hp_bad_month.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch current source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,base64
+
+          p=Path('index.html')
+          html=p.read_text(encoding='utf-8')
+          m=re.search(r'var\s+MOTOR_B64="([A-Za-z0-9+/=]+)";',html)
+          if not m: raise SystemExit('MOTOR_B64 no encontrado')
+          motor=base64.b64decode(m.group(1)).decode('utf-8')
+
+          replacements=[
+            (
+              "var txt=(nombre+' '+categoria+' dia '+dia.dia+' '+dia.horario+' '+bad.motivo).toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');",
+              "var mesLabel=String(dia.mesLabel||'').trim();\\n      var txt=(nombre+' '+categoria+' dia '+dia.dia+' '+mesLabel+' '+dia.horario+' '+bad.motivo).toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');"
+            ),
+            (
+              "malos.push({nombre:nombre,categoria:categoria,dia:dia.dia,horario:dia.horario,bad:bad});",
+              "malos.push({nombre:nombre,categoria:categoria,dia:dia.dia,mes:dia.mes||'',mesLabel:mesLabel,monthIdx:dia.monthIdx,horario:dia.horario,bad:bad});"
+            ),
+            (
+              "malos.sort(function(a,b){\\n    if(a.dia!==b.dia)return a.dia-b.dia;",
+              "malos.sort(function(a,b){\\n    var ma=String(a.mes||''),mb=String(b.mes||'');\\n    if(ma!==mb)return ma.localeCompare(mb);\\n    if(a.dia!==b.dia)return a.dia-b.dia;"
+            ),
+            (
+              "+'<div><div class=\"hp-name\">'+escH(x.nombre)+'</div><div class=\"hp-cat\">'+escH(x.categoria)+' · Día '+x.dia+'</div></div>'",
+              "+'<div><div class=\"hp-name\">'+escH(x.nombre)+'</div><div class=\"hp-cat\">'+escH(x.categoria)+' · '+x.dia+(x.mesLabel?' de '+escH(String(x.mesLabel).toLowerCase()):'')+'</div></div>'"
+            )
+          ]
+          for old,new in replacements:
+            count=motor.count(old)
+            if count!=1:
+              raise SystemExit(f'Patron inesperado ({count}): {old[:100]}')
+            motor=motor.replace(old,new,1)
+
+          encoded=base64.b64encode(motor.encode('utf-8')).decode('ascii')
+          html=html[:m.start(1)]+encoded+html[m.end(1):]
+          html=html.replace('sw.js?v=77','sw.js?v=78')
+          p.write_text(html,encoding='utf-8')
+
+          sw=Path('sw.js')
+          swtxt=sw.read_text(encoding='utf-8')
+          if "const CACHE='herramientas-turnos-v77';" not in swtxt:
+            raise SystemExit('CACHE v77 no encontrado')
+          swtxt=swtxt.replace('/* HERRAMIENTAS SW V77 - BAJA CONSERVA HORAS EN PLANTILLA */','/* HERRAMIENTAS SW V78 - MES EN TURNOS MALOS */',1)
+          swtxt=swtxt.replace("const CACHE='herramientas-turnos-v77';","const CACHE='herramientas-turnos-v78';",1)
+          sw.write_text(swtxt,encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/__patch_hp_bad_month.yml
+          git rm -f __hp_bad_diag.txt || true
+          git add index.html sw.js
+          git commit -m 'Muestra el mes en Turnos malos de Horas plantilla'
+          git push
